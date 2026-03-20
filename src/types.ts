@@ -22,6 +22,7 @@ export interface AuctionItem {
   confidenceScore?: number; // 0-100
   riskFlags?: string[];
   isNative?: boolean; // True if listed directly on Unreserved.net
+  sourceUrl?: string; // Original listing URL (for price matching)
 }
 
 export interface IntelligenceReport {

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Search, 
   Menu, 
@@ -68,7 +68,90 @@ import { getMarketInsight } from './services/geminiService';
 import { MOCK_ITEMS, TREND_DATA } from './mockData';
 import { AuctionItem, IntelligenceReport } from './types';
 
-// --- Components ---
+// --- Hooks ---
+
+interface PriceEntry {
+  price: number;
+  ends_at: string;
+  bids: number;
+  is_live: boolean;
+}
+
+interface PricesData {
+  updated_at: string;
+  source: string;
+  item_count: number;
+  items: Record<string, PriceEntry>;
+}
+
+function usePrices() {
+  const [prices, setPrices] = useState<PricesData | null>(null);
+  const [lastFetched, setLastFetched] = useState<number | null>(null);
+  const prevData = useRef<PricesData | null>(null);
+
+  const fetchPrices = useCallback(async () => {
+    try {
+      const res = await fetch('/prices.json?t=' + Date.now());
+      if (!res.ok) return;
+      const data: PricesData = await res.json();
+      prevData.current = data;
+      setPrices(data);
+      setLastFetched(Date.now());
+    } catch {
+      // Keep last known data on error
+      if (prevData.current) {
+        setPrices(prevData.current);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPrices();
+    const id = setInterval(fetchPrices, 30_000);
+    return () => clearInterval(id);
+  }, [fetchPrices]);
+
+  // Look up by source_url — extract UUID from the last path segment
+  const getPrice = useCallback((sourceUrl?: string): PriceEntry | null => {
+    if (!prices || !sourceUrl) return null;
+    const segments = sourceUrl.replace(/\/+$/, '').split('/');
+    const uuid = segments[segments.length - 1];
+    return prices.items[uuid] || null;
+  }, [prices]);
+
+  return { prices, lastFetched, getPrice };
+}
+
+// Countdown timer that ticks every second client-side
+const LiveCountdown = ({ endsAt }: { endsAt: string }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const tick = () => {
+      const diff = new Date(endsAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('ENDED');
+        return;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const mins = Math.floor((diff / (1000 * 60)) % 60);
+      const secs = Math.floor((diff / 1000) % 60);
+      if (days > 0) {
+        setTimeLeft(`${days}d ${hours}h ${mins}m`);
+      } else if (hours > 0) {
+        setTimeLeft(`${hours}h ${mins}m ${secs}s`);
+      } else {
+        setTimeLeft(`${mins}m ${secs}s`);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [endsAt]);
+
+  return <>{timeLeft}</>;
+};
 
 // --- Components ---
 
@@ -206,7 +289,12 @@ const BottomNav = ({ activePage, setActivePage, onSearch, onListClick }: { activ
   );
 };
 
-const AuctionCard: React.FC<{ item: AuctionItem, onClick: () => void, viewMode?: 'grid' | 'list' }> = ({ item, onClick, viewMode = 'grid' }) => {
+const AuctionCard: React.FC<{
+  item: AuctionItem,
+  onClick: () => void,
+  viewMode?: 'grid' | 'list',
+  livePrice?: PriceEntry | null,
+}> = ({ item, onClick, viewMode = 'grid', livePrice }) => {
   const getBuyerEdgeColor = (score: string) => {
     if (score === 'Strong Buy') return 'success';
     if (score === 'Moderate Edge') return 'accent';
@@ -214,8 +302,13 @@ const AuctionCard: React.FC<{ item: AuctionItem, onClick: () => void, viewMode?:
     return 'destructive';
   };
 
+  // Determine display values — live price overlay wins if available
+  const displayPrice = livePrice ? livePrice.price : (item.status === 'live' ? item.currentBid || 0 : item.price || 0);
+  const isSold = livePrice ? !livePrice.is_live : item.status !== 'live';
+  const displayStatus = isSold ? 'sold' : 'live';
+
   return (
-    <Card 
+    <Card
       onClick={onClick}
       className={cn(
         "group cursor-pointer overflow-hidden border-white/5 hover:border-accent/30 transition-all duration-500",
@@ -228,14 +321,14 @@ const AuctionCard: React.FC<{ item: AuctionItem, onClick: () => void, viewMode?:
         "relative overflow-hidden",
         viewMode === 'list' ? "w-32 md:w-72 shrink-0" : "aspect-[16/10]"
       )}>
-        <img 
-          src={item.imageUrl} 
+        <img
+          src={item.imageUrl}
           alt={item.title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
           referrerPolicy="no-referrer"
         />
         <div className="absolute top-2 md:top-3 left-2 md:left-3 flex flex-col gap-1 md:gap-2">
-          {item.status === 'live' ? (
+          {displayStatus === 'live' ? (
             <Badge variant="accent" className="bg-red-500 text-white border-none font-black animate-pulse text-[8px] md:text-[10px]">LIVE</Badge>
           ) : (
             <Badge variant="secondary" className="font-bold text-[8px] md:text-[10px]">SOLD</Badge>
@@ -244,10 +337,15 @@ const AuctionCard: React.FC<{ item: AuctionItem, onClick: () => void, viewMode?:
             <Badge variant="accent" className="bg-accent text-black border-none font-black text-[8px] md:text-[10px]">DIRECT</Badge>
           )}
         </div>
-        {item.status === 'live' && (
+        {displayStatus === 'live' && (
           <div className="absolute bottom-2 md:bottom-3 right-2 md:right-3 px-1.5 md:px-2 py-0.5 md:py-1 bg-black/80 backdrop-blur-md rounded-lg text-[8px] md:text-[10px] font-black text-white flex items-center gap-1 md:gap-1.5 border border-white/10">
             <Timer size={10} className="text-accent md:w-3 md:h-3" />
-            {item.timeLeft}
+            {livePrice ? <LiveCountdown endsAt={livePrice.ends_at} /> : item.timeLeft}
+          </div>
+        )}
+        {displayStatus === 'sold' && livePrice && (
+          <div className="absolute bottom-2 md:bottom-3 right-2 md:right-3 px-1.5 md:px-2 py-0.5 md:py-1 bg-black/80 backdrop-blur-md rounded-lg text-[8px] md:text-[10px] font-black text-muted-foreground flex items-center gap-1 md:gap-1.5 border border-white/10">
+            SOLD
           </div>
         )}
       </div>
@@ -267,12 +365,14 @@ const AuctionCard: React.FC<{ item: AuctionItem, onClick: () => void, viewMode?:
 
         <div className="mt-auto pt-2 md:pt-4 border-t border-white/5 flex items-end justify-between">
           <div className="space-y-0.5 md:space-y-1">
-            <span className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Market Value</span>
+            <span className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              {livePrice ? (livePrice.bids > 0 ? `${livePrice.bids} bid${livePrice.bids !== 1 ? 's' : ''}` : 'Starting at') : 'Market Value'}
+            </span>
             <div className="text-base md:text-2xl font-black tracking-tighter">
-              {formatCurrency(item.status === 'live' ? item.currentBid || 0 : item.price || 0)}
+              {formatCurrency(displayPrice)}
             </div>
           </div>
-          
+
           <div className="text-right space-y-1 md:space-y-2">
             <div className="flex flex-col items-end">
               <span className="text-[8px] md:text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 md:mb-1">Buyer Edge</span>
@@ -1253,7 +1353,33 @@ const ItemDetailPage = ({ item, onBack, onList, items }: { item: AuctionItem, on
   );
 };
 
+const LastUpdatedIndicator = ({ lastFetched }: { lastFetched: number | null }) => {
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
+  useEffect(() => {
+    if (!lastFetched) return;
+    const tick = () => setSecondsAgo(Math.floor((Date.now() - lastFetched) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lastFetched]);
+
+  if (!lastFetched) return null;
+
+  return (
+    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+      <span className="relative flex h-1.5 w-1.5">
+        <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-75", secondsAgo < 35 ? "bg-accent animate-ping" : "bg-yellow-500 animate-ping")} />
+        <span className={cn("relative inline-flex rounded-full h-1.5 w-1.5", secondsAgo < 35 ? "bg-accent" : "bg-yellow-500")} />
+      </span>
+      Last updated: {secondsAgo}s ago
+    </div>
+  );
+};
+
 const LiveFeedPage = ({ onSelectItem, items }: { onSelectItem: (item: AuctionItem) => void, items: AuctionItem[] }) => {
+  const { lastFetched, getPrice } = usePrices();
+
   return (
     <div className="flex flex-col gap-6 md:gap-12 pb-24 md:pb-12">
       {/* Live Ticker */}
@@ -1277,12 +1403,15 @@ const LiveFeedPage = ({ onSelectItem, items }: { onSelectItem: (item: AuctionIte
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-12">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[9px] md:text-[10px] font-bold uppercase tracking-widest">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-              </span>
-              Live Market Feed
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[9px] md:text-[10px] font-bold uppercase tracking-widest">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                Live Market Feed
+              </div>
+              <LastUpdatedIndicator lastFetched={lastFetched} />
             </div>
             <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">Live Auctions</h1>
             <p className="text-muted-foreground text-sm md:text-lg font-medium max-w-xl">Real-time bidding across all major North American auction houses.</p>
@@ -1295,10 +1424,11 @@ const LiveFeedPage = ({ onSelectItem, items }: { onSelectItem: (item: AuctionIte
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {items.filter(i => i.status === 'live').map((item) => (
-            <AuctionCard 
-              key={item.id} 
-              item={item} 
-              onClick={() => onSelectItem(item)} 
+            <AuctionCard
+              key={item.id}
+              item={item}
+              onClick={() => onSelectItem(item)}
+              livePrice={getPrice(item.sourceUrl)}
             />
           ))}
         </div>
@@ -2168,6 +2298,7 @@ export default function App() {
   const handleBulkImport = (rawItems: any[]): number => {
     const newItems: AuctionItem[] = rawItems.map((raw, i) => ({
       id: `bulk-${Date.now()}-${i}`,
+      sourceUrl: raw.source_url || '',
       title: raw.title || `${raw.year} ${raw.make} ${raw.model}`,
       category: raw.category || 'Other',
       year: typeof raw.year === 'number' ? raw.year : parseInt(raw.year) || 0,
