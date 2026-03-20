@@ -41,7 +41,15 @@ import {
   Download,
   Share2,
   ArrowLeft,
-  User
+  User,
+  Bot,
+  Upload,
+  Link,
+  DollarSign,
+  Hash,
+  Gauge,
+  Globe,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -1612,6 +1620,321 @@ const ListYourItemPage = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
+const AGENTIC_CATEGORIES = [
+  'Tractors', 'Excavators', 'Trucks', 'Trailers', 'Loaders', 'Cranes',
+  'Forklifts', 'Compactors', 'Generators', 'Vehicles', 'Farm Equipment',
+  'Attachments', 'Other'
+];
+
+const AGENTIC_CURRENCIES = ['CAD', 'USD'];
+
+const AGENTIC_PLATFORMS = [
+  'Ritchie Bros.', 'Purple Wave', 'IronPlanet', 'GovPlanet',
+  'Proxibid', 'BigIron', 'AuctionTime', 'Machinery Trader', 'Other'
+];
+
+const AgenticListingForm = () => {
+  const [formData, setFormData] = useState({
+    sourcePlatform: '',
+    sourceUrl: '',
+    category: '',
+    title: '',
+    year: '',
+    make: '',
+    model: '',
+    location: '',
+    description: '',
+    photoUrls: '',
+    vinSerial: '',
+    hoursKms: '',
+    currency: 'CAD',
+    startingPrice: '',
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const update = (field: string, value: string) => setFormData(prev => ({ ...prev, [field]: value }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Agentic Listing Submitted:', formData);
+    setSubmitted(true);
+    setTimeout(() => {
+      setSubmitted(false);
+      setFormData({
+        sourcePlatform: '', sourceUrl: '', category: '', title: '', year: '',
+        make: '', model: '', location: '', description: '', photoUrls: '',
+        vinSerial: '', hoursKms: '', currency: 'CAD', startingPrice: '',
+      });
+      setIsExpanded(false);
+    }, 3000);
+  };
+
+  const inputClass = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all";
+  const selectClass = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all appearance-none cursor-pointer";
+  const labelClass = "flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2";
+
+  return (
+    <section className="border-t border-accent/20 bg-gradient-to-b from-accent/5 via-background to-background">
+      <div className="container mx-auto px-4 py-16">
+        {/* Header — always visible */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+              <Bot size={24} />
+            </div>
+            <div className="text-left">
+              <h3 className="text-xl md:text-2xl font-black tracking-tighter uppercase">
+                Agentic Listing
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Post it. Forget it. Our scrapers handle the rest.
+              </p>
+            </div>
+          </div>
+          <div className={cn(
+            "w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center transition-all duration-300 group-hover:border-accent/30 group-hover:bg-accent/10",
+            isExpanded && "rotate-180"
+          )}>
+            <ChevronDown size={18} className="text-muted-foreground group-hover:text-accent transition-colors" />
+          </div>
+        </button>
+
+        {/* Expandable Form */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+              className="overflow-hidden"
+            >
+              {submitted ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="mt-10 p-12 rounded-3xl border border-accent/20 bg-accent/5 text-center"
+                >
+                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 size={32} className="text-accent" />
+                  </div>
+                  <h4 className="text-xl font-black uppercase tracking-tight">Listing Posted</h4>
+                  <p className="text-sm text-muted-foreground mt-2">Set it and forget it. Your listing is live.</p>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubmit} className="mt-10 space-y-8">
+                  {/* Source Section */}
+                  <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lock size={12} className="text-accent" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-accent">Source (Paywalled)</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={labelClass}><Globe size={12} /> Source Platform</label>
+                        <select
+                          value={formData.sourcePlatform}
+                          onChange={e => update('sourcePlatform', e.target.value)}
+                          className={selectClass}
+                          required
+                        >
+                          <option value="" className="bg-background">Select platform...</option>
+                          {AGENTIC_PLATFORMS.map(p => (
+                            <option key={p} value={p} className="bg-background">{p}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className={labelClass}><Link size={12} /> Source URL</label>
+                        <input
+                          type="url"
+                          value={formData.sourceUrl}
+                          onChange={e => update('sourceUrl', e.target.value)}
+                          placeholder="https://..."
+                          className={inputClass}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Details Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className={labelClass}><Filter size={12} /> Category</label>
+                      <select
+                        value={formData.category}
+                        onChange={e => update('category', e.target.value)}
+                        className={selectClass}
+                        required
+                      >
+                        <option value="" className="bg-background">Select...</option>
+                        {AGENTIC_CATEGORIES.map(c => (
+                          <option key={c} value={c} className="bg-background">{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="lg:col-span-3">
+                      <label className={labelClass}><FileText size={12} /> Title</label>
+                      <input
+                        type="text"
+                        value={formData.title}
+                        onChange={e => update('title', e.target.value)}
+                        placeholder="2021 John Deere 8R 370"
+                        className={inputClass}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className={labelClass}><Clock size={12} /> Year</label>
+                      <input
+                        type="number"
+                        value={formData.year}
+                        onChange={e => update('year', e.target.value)}
+                        placeholder="2021"
+                        min="1900"
+                        max="2030"
+                        className={inputClass}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Make</label>
+                      <input
+                        type="text"
+                        value={formData.make}
+                        onChange={e => update('make', e.target.value)}
+                        placeholder="John Deere"
+                        className={inputClass}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Model</label>
+                      <input
+                        type="text"
+                        value={formData.model}
+                        onChange={e => update('model', e.target.value)}
+                        placeholder="8R 370"
+                        className={inputClass}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}><MapPin size={12} /> Location</label>
+                      <input
+                        type="text"
+                        value={formData.location}
+                        onChange={e => update('location', e.target.value)}
+                        placeholder="Saskatoon, SK"
+                        className={inputClass}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}><Hash size={12} /> VIN / Serial #</label>
+                      <input
+                        type="text"
+                        value={formData.vinSerial}
+                        onChange={e => update('vinSerial', e.target.value)}
+                        placeholder="1HGBH41JXMN109186"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}><Info size={12} /> Description</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={e => update('description', e.target.value)}
+                      placeholder="Condition, features, service history..."
+                      rows={3}
+                      className={cn(inputClass, "resize-none")}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className={labelClass}><Camera size={12} /> Photo URLs (one per line)</label>
+                    <textarea
+                      value={formData.photoUrls}
+                      onChange={e => update('photoUrls', e.target.value)}
+                      placeholder={"https://images.example.com/photo1.jpg\nhttps://images.example.com/photo2.jpg"}
+                      rows={3}
+                      className={cn(inputClass, "resize-none font-mono text-xs")}
+                      required
+                    />
+                  </div>
+
+                  {/* Bottom row: Hours/KMs, Currency, Starting Price */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className={labelClass}><Gauge size={12} /> Hours / KMs</label>
+                      <input
+                        type="text"
+                        value={formData.hoursKms}
+                        onChange={e => update('hoursKms', e.target.value)}
+                        placeholder="3,200 hrs"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}><DollarSign size={12} /> Currency</label>
+                      <select
+                        value={formData.currency}
+                        onChange={e => update('currency', e.target.value)}
+                        className={selectClass}
+                      >
+                        {AGENTIC_CURRENCIES.map(c => (
+                          <option key={c} value={c} className="bg-background">{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}><DollarSign size={12} /> Starting Price</label>
+                      <input
+                        type="number"
+                        value={formData.startingPrice}
+                        onChange={e => update('startingPrice', e.target.value)}
+                        placeholder="50000"
+                        min="0"
+                        className={inputClass}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit */}
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      type="submit"
+                      className="h-14 px-10 rounded-2xl bg-accent text-black font-black text-sm uppercase tracking-widest hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
+                    >
+                      <Upload size={16} className="mr-2" />
+                      Post Listing
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </section>
+  );
+};
+
 export default function App() {
   const [activePage, setActivePage] = useState<'home' | 'search' | 'detail' | 'live' | 'pricing' | 'list'>('home');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1768,6 +2091,9 @@ export default function App() {
 
       {/* Subscription Modal */}
       <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />
+
+      {/* Agentic Listing Form */}
+      <AgenticListingForm />
 
       {/* Footer */}
       <footer className="border-t border-border bg-secondary/20 py-12">
