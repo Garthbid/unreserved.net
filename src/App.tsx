@@ -2327,21 +2327,22 @@ const AgenticListingForm = ({ onSubmitListing, onBulkImport, onNavigateToLive }:
 };
 
 // Convert a Supabase DB row to an AuctionItem for the frontend
-function dbItemToAuctionItem(row: DbItem): AuctionItem {
+function dbItemToAuctionItem(row: any): AuctionItem {
   const price = Number(row.starting_price) || 0;
+  const photos = Array.isArray(row.photos) ? row.photos : [];
   return {
-    id: row.id,
-    sourceUrl: row.source_url,
-    title: row.title,
-    category: row.category,
-    year: row.year || 0,
+    id: row.id || `unknown-${Date.now()}`,
+    sourceUrl: row.source_url || '',
+    title: row.title || 'Untitled',
+    category: row.category || 'Other',
+    year: Number(row.year) || 0,
     make: row.make || '',
     model: row.model || '',
     location: row.location || '',
     price,
     currentBid: price,
-    auctionSource: row.source_platform,
-    imageUrl: (row.photos && row.photos[0]) || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
+    auctionSource: row.source_platform || 'Unknown',
+    imageUrl: photos[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
     status: 'live',
     views: 0,
     fairValueRange: [price * 0.9, price * 1.1],
@@ -2364,18 +2365,26 @@ export default function App() {
   // Load persisted items from Supabase on mount
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from('items')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
-        const dbItems = (data as DbItem[]).map(dbItemToAuctionItem);
-        setItems(prev => {
-          // Merge: DB items first, then MOCK_ITEMS (dedupe by id)
-          const ids = new Set(dbItems.map(i => i.id));
-          const kept = prev.filter(i => !ids.has(i.id));
-          return [...dbItems, ...kept];
-        });
+      try {
+        const { data, error } = await supabase
+          .from('items')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) {
+          console.error('Supabase fetch error:', error);
+          return;
+        }
+        if (data && data.length > 0) {
+          const dbItems = data.map(dbItemToAuctionItem);
+          setItems(prev => {
+            // Merge: DB items first, then MOCK_ITEMS (dedupe by id)
+            const ids = new Set(dbItems.map(i => i.id));
+            const kept = prev.filter(i => !ids.has(i.id));
+            return [...dbItems, ...kept];
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load items from Supabase:', err);
       }
     })();
   }, []);
