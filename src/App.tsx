@@ -67,6 +67,7 @@ import { cn, formatCurrency } from './utils';
 import { getMarketInsight } from './services/geminiService';
 import { MOCK_ITEMS, TREND_DATA } from './mockData';
 import { AuctionItem, IntelligenceReport } from './types';
+import { supabase, DbItem, DbPrice } from './lib/supabase';
 
 // --- Hooks ---
 
@@ -78,30 +79,37 @@ interface PriceEntry {
   status: 'upcoming' | 'live' | 'sold';
 }
 
-interface PricesData {
-  updated_at: string;
-  source: string;
-  item_count: number;
-  items: Record<string, PriceEntry>;
-}
+// Map of item_id → PriceEntry
+type PriceMap = Record<string, PriceEntry>;
 
 function usePrices() {
-  const [prices, setPrices] = useState<PricesData | null>(null);
+  const [priceMap, setPriceMap] = useState<PriceMap>({});
   const [lastFetched, setLastFetched] = useState<number | null>(null);
-  const prevData = useRef<PricesData | null>(null);
+  const prevData = useRef<PriceMap>({});
 
   const fetchPrices = useCallback(async () => {
     try {
-      const res = await fetch('/prices.json?t=' + Date.now());
-      if (!res.ok) return;
-      const data: PricesData = await res.json();
-      prevData.current = data;
-      setPrices(data);
+      const { data, error } = await supabase
+        .from('prices')
+        .select('item_id, price, starts_at, ends_at, bids, status');
+      if (error) throw error;
+      const map: PriceMap = {};
+      for (const row of data || []) {
+        map[row.item_id] = {
+          price: Number(row.price),
+          starts_at: row.starts_at,
+          ends_at: row.ends_at,
+          bids: row.bids,
+          status: row.status,
+        };
+      }
+      prevData.current = map;
+      setPriceMap(map);
       setLastFetched(Date.now());
     } catch {
       // Keep last known data on error
-      if (prevData.current) {
-        setPrices(prevData.current);
+      if (Object.keys(prevData.current).length > 0) {
+        setPriceMap(prevData.current);
       }
     }
   }, []);
@@ -112,15 +120,13 @@ function usePrices() {
     return () => clearInterval(id);
   }, [fetchPrices]);
 
-  // Look up by source_url — extract UUID from the last path segment
-  const getPrice = useCallback((sourceUrl?: string): PriceEntry | null => {
-    if (!prices || !sourceUrl) return null;
-    const segments = sourceUrl.replace(/\/+$/, '').split('/');
-    const uuid = segments[segments.length - 1];
-    return prices.items[uuid] || null;
-  }, [prices]);
+  // Look up by item UUID (the Supabase items.id)
+  const getPrice = useCallback((itemId?: string): PriceEntry | null => {
+    if (!itemId) return null;
+    return priceMap[itemId] || null;
+  }, [priceMap]);
 
-  return { prices, lastFetched, getPrice };
+  return { priceMap, lastFetched, getPrice };
 }
 
 function formatCountdown(diff: number): string {
@@ -1498,7 +1504,7 @@ const LiveFeedPage = ({ onSelectItem, items }: { onSelectItem: (item: AuctionIte
               key={item.id}
               item={item}
               onClick={() => onSelectItem(item)}
-              livePrice={getPrice(item.sourceUrl)}
+              livePrice={getPrice(item.id)}
             />
           ))}
         </div>
@@ -1852,7 +1858,7 @@ const BULK_PLACEHOLDER = `[
   }
 ]`;
 
-const AgenticListingForm = ({ onSubmitListing, onBulkImport, onNavigateToLive }: { onSubmitListing: (formData: any) => void, onBulkImport: (items: any[]) => number, onNavigateToLive: () => void }) => {
+const AgenticListingForm = ({ onSubmitListing, onBulkImport, onNavigateToLive }: { onSubmitListing: (formData: any) => void, onBulkImport: (items: any[]) => Promise<number>, onNavigateToLive: () => void }) => {
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('bulk');
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -1906,7 +1912,7 @@ const AgenticListingForm = ({ onSubmitListing, onBulkImport, onNavigateToLive }:
     }
   };
 
-  const handleBulkImport = () => {
+  const handleBulkImport = async () => {
     setBulkError('');
     if (!bulkJson.trim()) {
       setBulkError('Paste your JSON array first');
@@ -1922,7 +1928,11 @@ const AgenticListingForm = ({ onSubmitListing, onBulkImport, onNavigateToLive }:
         setBulkError('Array is empty — nothing to import');
         return;
       }
-      const count = onBulkImport(parsed);
+      const count = await onBulkImport(parsed);
+      if (count === 0) {
+        setBulkError('Import failed — check console for details');
+        return;
+      }
       setBulkSuccess(count);
       setBulkJson('');
       setBulkItemCount(0);
@@ -2316,6 +2326,33 @@ const AgenticListingForm = ({ onSubmitListing, onBulkImport, onNavigateToLive }:
   );
 };
 
+// Convert a Supabase DB row to an AuctionItem for the frontend
+function dbItemToAuctionItem(row: DbItem): AuctionItem {
+  const price = Number(row.starting_price) || 0;
+  return {
+    id: row.id,
+    sourceUrl: row.source_url,
+    title: row.title,
+    category: row.category,
+    year: row.year || 0,
+    make: row.make || '',
+    model: row.model || '',
+    location: row.location || '',
+    price,
+    currentBid: price,
+    auctionSource: row.source_platform,
+    imageUrl: (row.photos && row.photos[0]) || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
+    status: 'live',
+    views: 0,
+    fairValueRange: [price * 0.9, price * 1.1],
+    recommendedMaxBid: price * 1.05,
+    buyerEdgeScore: 'Strong Buy',
+    confidenceScore: 85,
+    riskFlags: ['New listing — limited market data'],
+    isNative: true,
+  };
+}
+
 export default function App() {
   const [activePage, setActivePage] = useState<'home' | 'search' | 'detail' | 'live' | 'pricing' | 'list'>('home');
   const [searchQuery, setSearchQuery] = useState('');
@@ -2324,7 +2361,26 @@ export default function App() {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [items, setItems] = useState<AuctionItem[]>(MOCK_ITEMS);
 
-  const handleAgenticListing = (formData: {
+  // Load persisted items from Supabase on mount
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from('items')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        const dbItems = (data as DbItem[]).map(dbItemToAuctionItem);
+        setItems(prev => {
+          // Merge: DB items first, then MOCK_ITEMS (dedupe by id)
+          const ids = new Set(dbItems.map(i => i.id));
+          const kept = prev.filter(i => !ids.has(i.id));
+          return [...dbItems, ...kept];
+        });
+      }
+    })();
+  }, []);
+
+  const handleAgenticListing = async (formData: {
     sourcePlatform: string;
     sourceUrl: string;
     category: string;
@@ -2340,60 +2396,56 @@ export default function App() {
     currency: string;
     startingPrice: string;
   }) => {
-    const newItem: AuctionItem = {
-      id: `agentic-${Date.now()}`,
-      title: `${formData.year} ${formData.make} ${formData.model}`,
+    const row = {
+      source_platform: formData.sourcePlatform,
+      source_url: formData.sourceUrl,
       category: formData.category,
-      year: parseInt(formData.year),
-      make: formData.make,
-      model: formData.model,
-      location: formData.location,
-      price: parseFloat(formData.startingPrice),
-      currentBid: parseFloat(formData.startingPrice),
-      auctionSource: formData.sourcePlatform,
-      imageUrl: formData.photoUrls.split('\n').filter(Boolean)[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
-      status: 'live',
-      timeLeft: '23h 59m',
-      views: 0,
-      fairValueRange: [parseFloat(formData.startingPrice) * 0.9, parseFloat(formData.startingPrice) * 1.1],
-      recommendedMaxBid: parseFloat(formData.startingPrice) * 1.05,
-      buyerEdgeScore: 'Strong Buy',
-      confidenceScore: 85,
-      riskFlags: ['New listing — limited market data'],
-      isNative: true,
+      title: formData.title || `${formData.year} ${formData.make} ${formData.model}`,
+      year: parseInt(formData.year) || null,
+      make: formData.make || null,
+      model: formData.model || null,
+      location: formData.location || null,
+      description: formData.description || null,
+      photos: formData.photoUrls.split('\n').filter(Boolean),
+      vin: formData.vinSerial || null,
+      km_hours: formData.hoursKms || null,
+      currency: formData.currency,
+      starting_price: parseFloat(formData.startingPrice) || 0,
     };
-    setItems(prev => [newItem, ...prev]);
+    const { data, error } = await supabase.from('items').insert([row]).select();
+    if (!error && data && data.length > 0) {
+      const newItem = dbItemToAuctionItem(data[0] as DbItem);
+      setItems(prev => [newItem, ...prev]);
+    } else {
+      console.error('Supabase insert error:', error);
+    }
   };
 
-  const handleBulkImport = (rawItems: any[]): number => {
-    const newItems: AuctionItem[] = rawItems.map((raw, i) => ({
-      id: `bulk-${Date.now()}-${i}`,
-      sourceUrl: raw.source_url || '',
-      title: raw.title || `${raw.year} ${raw.make} ${raw.model}`,
+  const handleBulkImport = async (rawItems: any[]): Promise<number> => {
+    const rows = rawItems.map(raw => ({
+      source_platform: raw.source_platform || 'Unknown',
+      source_url: raw.source_url || '',
       category: raw.category || 'Other',
-      year: typeof raw.year === 'number' ? raw.year : parseInt(raw.year) || 0,
-      make: raw.make || '',
-      model: raw.model || '',
-      location: raw.location || '',
-      price: typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0,
-      currentBid: typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0,
-      auctionSource: raw.source_platform || 'Unknown',
-      imageUrl: (Array.isArray(raw.photos) && raw.photos[0]) || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
-      status: 'live' as const,
-      timeLeft: '23h 59m',
-      views: 0,
-      fairValueRange: [
-        (typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0) * 0.9,
-        (typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0) * 1.1
-      ],
-      recommendedMaxBid: (typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0) * 1.05,
-      buyerEdgeScore: 'Strong Buy' as const,
-      confidenceScore: 85,
-      riskFlags: ['New listing — limited market data'],
-      isNative: true,
+      title: raw.title || `${raw.year} ${raw.make} ${raw.model}`,
+      year: typeof raw.year === 'number' ? raw.year : parseInt(raw.year) || null,
+      make: raw.make || null,
+      model: raw.model || null,
+      location: raw.location || null,
+      description: raw.description || null,
+      photos: Array.isArray(raw.photos) ? raw.photos : [],
+      vin: raw.vin || null,
+      km_hours: raw.km_hours || null,
+      currency: raw.currency || 'CAD',
+      starting_price: typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0,
     }));
-    setItems(prev => [...newItems, ...prev]);
-    return newItems.length;
+    const { data, error } = await supabase.from('items').insert(rows).select();
+    if (!error && data && data.length > 0) {
+      const newItems = (data as DbItem[]).map(dbItemToAuctionItem);
+      setItems(prev => [...newItems, ...prev]);
+      return newItems.length;
+    }
+    console.error('Supabase bulk insert error:', error);
+    return 0;
   };
 
   const handleSearch = (q: string) => {
