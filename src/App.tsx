@@ -143,26 +143,25 @@ const LiveCountdown = ({ startsAt, endsAt, status, onStatusChange }: {
 }) => {
   const [display, setDisplay] = useState('');
   const [label, setLabel] = useState('');
-  const currentStatus = useRef(status);
-
-  useEffect(() => {
-    currentStatus.current = status;
-  }, [status]);
+  // Ref tracks the effective status so the tick can mutate it for auto-transitions
+  const effectiveStatus = useRef(status);
+  effectiveStatus.current = status;
 
   useEffect(() => {
     const tick = () => {
-      if (currentStatus.current === 'sold') {
+      if (effectiveStatus.current === 'sold') {
         setDisplay('');
         setLabel('SOLD');
         return;
       }
 
-      if (currentStatus.current === 'upcoming' && startsAt) {
+      if (effectiveStatus.current === 'upcoming' && startsAt) {
         const diff = new Date(startsAt).getTime() - Date.now();
         if (diff <= 0) {
           // Auto-transition to live
-          currentStatus.current = 'live';
+          effectiveStatus.current = 'live';
           onStatusChange?.('live');
+          // Fall through to live countdown below
         } else {
           setLabel('Starts in');
           setDisplay(formatCountdown(diff));
@@ -170,7 +169,7 @@ const LiveCountdown = ({ startsAt, endsAt, status, onStatusChange }: {
         }
       }
 
-      // Live
+      // Live — count down to ends_at
       const diff = new Date(endsAt).getTime() - Date.now();
       if (diff <= 0) {
         setLabel('');
@@ -184,7 +183,7 @@ const LiveCountdown = ({ startsAt, endsAt, status, onStatusChange }: {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [startsAt, endsAt, onStatusChange]);
+  }, [startsAt, endsAt, status, onStatusChange]);
 
   if (!display && !label) return null;
   return <>{label ? `${label} ${display}` : display}</>;
@@ -341,16 +340,22 @@ const AuctionCard: React.FC<{
 
   // Determine display values — live price overlay wins if available
   const displayPrice = livePrice ? livePrice.price : (item.status === 'live' ? item.currentBid || 0 : item.price || 0);
-  const [liveStatus, setLiveStatus] = useState<'upcoming' | 'live' | 'sold'>(
-    livePrice ? livePrice.status : (item.status === 'live' ? 'live' : item.status === 'sold' ? 'sold' : 'upcoming')
-  );
 
-  // Sync with new price data from fetch
+  // Track status with client-side auto-transitions (upcoming→live→sold)
+  // Initialize from livePrice if available, otherwise from item.status
+  const initialStatus = livePrice ? livePrice.status : (item.status as 'upcoming' | 'live' | 'sold');
+  const [localStatus, setLocalStatus] = useState<'upcoming' | 'live' | 'sold'>(initialStatus);
+  const lastPriceStatus = useRef<string | null>(null);
+
+  // Re-sync whenever prices.json delivers a new status
   useEffect(() => {
-    if (livePrice) setLiveStatus(livePrice.status);
+    if (livePrice && livePrice.status !== lastPriceStatus.current) {
+      lastPriceStatus.current = livePrice.status;
+      setLocalStatus(livePrice.status);
+    }
   }, [livePrice]);
 
-  const displayStatus = livePrice ? liveStatus : (item.status === 'live' ? 'live' : 'sold');
+  const displayStatus = livePrice ? localStatus : (item.status === 'live' ? 'live' : 'sold');
 
   return (
     <Card
@@ -395,8 +400,8 @@ const AuctionCard: React.FC<{
             <LiveCountdown
               startsAt={livePrice.starts_at}
               endsAt={livePrice.ends_at}
-              status={liveStatus}
-              onStatusChange={setLiveStatus}
+              status={localStatus}
+              onStatusChange={setLocalStatus}
             />
           </div>
         )}
