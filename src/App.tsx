@@ -307,22 +307,14 @@ const BottomNav = ({ activePage, setActivePage, onSearch, onListClick }: { activ
                 else setActivePage(item.id as any);
               }}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-2xl transition-all duration-300 relative",
+                "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all duration-300",
                 isActive ? "text-accent" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <div className={cn("transition-all duration-300", isActive && "drop-shadow-[0_0_8px_rgba(242,125,38,0.5)]")}>
-                {item.icon}
-              </div>
-              <span className={cn("text-[9px] font-black uppercase tracking-widest transition-all duration-300", isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1")}>
+              {item.icon}
+              <span className={cn("text-[9px] font-bold uppercase tracking-wide", isActive ? "text-accent" : "text-muted-foreground")}>
                 {item.label}
               </span>
-              {isActive && (
-                <motion.div 
-                  layoutId="bottomNavTab"
-                  className="absolute -bottom-1 w-1 h-1 rounded-full bg-accent shadow-[0_0_10px_#1dd058]"
-                />
-              )}
             </button>
           );
         })}
@@ -585,76 +577,76 @@ const HomePage = ({ onSearch, setActivePage, handleSelectItem, onListClick, item
   const [query, setQuery] = useState('');
 
   return (
-    <div className="flex flex-col gap-8 md:gap-20 pb-24 md:pb-20">
+    <div className="flex flex-col gap-6 md:gap-20 pb-24 md:pb-20">
       {/* Hero Section */}
-      <section className="relative pt-8 pb-16 md:pt-24 md:pb-32 overflow-hidden border-b border-white/5">
+      <section className="relative pt-6 pb-10 md:pt-24 md:pb-32 overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 intelligence-gradient opacity-30 -z-10" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[500px] bg-accent/5 blur-[120px] -z-10 rounded-full" />
-        
+
         <div className="container mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="space-y-4 md:space-y-6"
+            className="space-y-3 md:space-y-6"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-[9px] md:text-[10px] font-bold uppercase tracking-widest">
-              <span className="relative flex h-2 w-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-[8px] md:text-[10px] font-bold uppercase tracking-widest">
+              <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 md:h-2 md:w-2 bg-accent"></span>
               </span>
               107,423 ITEMS LIVE NOW
             </div>
             <div className="flex flex-col items-center text-center">
-              <h1 className="text-4xl md:text-6xl lg:text-8xl font-black tracking-tighter leading-[1.05] max-w-4xl uppercase">
-                The Home of <span className="text-accent">Unreserved</span> Auctions.
+              <h1 className="text-[42px] md:text-6xl lg:text-8xl font-black tracking-tighter leading-[1.05] max-w-4xl uppercase">
+                <span className="block md:inline">The Home of</span>{' '}
+                <span className="block md:inline text-accent" style={{ textShadow: '0 0 30px rgba(29, 208, 88, 0.3), 0 0 60px rgba(29, 208, 88, 0.15)' }}>Unreserved</span>{' '}
+                <span className="block md:inline">Auctions.</span>
               </h1>
             </div>
-            <p className="text-muted-foreground text-sm md:text-lg max-w-2xl mx-auto leading-relaxed opacity-80">
+            <p className="text-muted-foreground text-xs md:text-lg max-w-2xl mx-auto leading-relaxed opacity-80 px-6 md:px-0">
               Browse the market, track live bidding, and list directly in front of serious buyers.
             </p>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="max-w-3xl mx-auto space-y-6 md:space-y-8 mt-8 md:mt-12"
+            className="max-w-3xl mx-auto space-y-4 md:space-y-8 mt-5 md:mt-12 px-4 md:px-0"
           >
-            <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-center justify-center">
-              <div className="relative group flex-1 w-full">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-accent transition-colors" />
-                <input 
+            <div className="flex gap-2 md:flex-row md:gap-4 items-center justify-center">
+              <div className="relative group flex-1">
+                <Search size={16} className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-accent transition-colors" />
+                <input
                   type="text"
                   placeholder="Search the market..."
-                  className="w-full h-14 md:h-16 pl-12 pr-4 bg-secondary/30 border border-border rounded-xl md:rounded-2xl text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all glass"
+                  className="w-full h-11 md:h-16 pl-9 md:pl-12 pr-3 md:pr-4 bg-secondary/30 border border-border rounded-lg md:rounded-2xl text-sm md:text-lg focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all glass"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && onSearch(query)}
                 />
               </div>
-              <div className="flex gap-2 w-full md:w-auto">
-                <Button 
-                  variant="outline"
-                  className="h-14 md:h-16 px-6 md:px-8 rounded-xl md:rounded-2xl flex-1 md:flex-none text-sm md:text-lg font-black border-accent/50 text-accent hover:bg-accent/10"
-                  onClick={() => onSearch(query)}
-                >
-                  Search Market
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                className="h-11 md:h-16 px-4 md:px-8 rounded-lg md:rounded-2xl text-xs md:text-lg font-black border-accent/50 text-accent hover:bg-accent/10 shrink-0"
+                onClick={() => onSearch(query)}
+              >
+                Search
+              </Button>
             </div>
-            
-            <div className="flex flex-wrap justify-center gap-2 md:gap-6 text-[9px] md:text-xs text-muted-foreground font-bold uppercase tracking-widest overflow-x-auto pb-2 md:pb-0 scrollbar-hide no-scrollbar">
-              <div className="flex items-center gap-2 shrink-0 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                <CheckCircle2 size={10} className="text-accent" />
+
+            <div className="flex justify-center gap-1.5 md:gap-6 text-[8px] md:text-xs text-muted-foreground font-bold uppercase tracking-wider md:tracking-widest">
+              <div className="flex items-center gap-1 md:gap-2 bg-white/5 px-2 py-1 md:px-3 md:py-1.5 rounded-full border border-white/5">
+                <CheckCircle2 size={8} className="md:w-2.5 md:h-2.5 text-accent" />
                 All Auctions
               </div>
-              <div className="flex items-center gap-2 shrink-0 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                <CheckCircle2 size={10} className="text-accent" />
-                Pricing Intelligence
+              <div className="flex items-center gap-1 md:gap-2 bg-white/5 px-2 py-1 md:px-3 md:py-1.5 rounded-full border border-white/5">
+                <CheckCircle2 size={8} className="md:w-2.5 md:h-2.5 text-accent" />
+                Pricing Intel
               </div>
-              <div className="flex items-center gap-2 shrink-0 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                <CheckCircle2 size={10} className="text-accent" />
+              <div className="flex items-center gap-1 md:gap-2 bg-white/5 px-2 py-1 md:px-3 md:py-1.5 rounded-full border border-white/5">
+                <CheckCircle2 size={8} className="md:w-2.5 md:h-2.5 text-accent" />
                 Direct Listing
               </div>
             </div>
@@ -663,10 +655,10 @@ const HomePage = ({ onSearch, setActivePage, handleSelectItem, onListClick, item
       </section>
 
       {/* Mobile-First Priority Sections */}
-      <section className="container mx-auto px-4 -mt-8 md:-mt-24 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+      <section className="container mx-auto px-4 -mt-4 md:-mt-24 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
           {/* Ending Soon - Priority 1 on Mobile */}
-          <Card className="p-4 md:p-6 space-y-4 md:space-y-5 bg-background/60 backdrop-blur-xl border-white/5 order-1">
+          <Card className="p-3 md:p-6 space-y-3 md:space-y-5 bg-background/60 backdrop-blur-xl border-white/5 order-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Timer size={16} className="text-red-500" />
@@ -698,24 +690,24 @@ const HomePage = ({ onSearch, setActivePage, handleSelectItem, onListClick, item
           </Card>
 
           {/* Sell Direct - Priority 2 on Mobile */}
-          <Card className="p-6 md:p-8 space-y-6 bg-accent text-black border-none order-2 lg:order-3 flex flex-col justify-center">
-            <div className="space-y-2">
-              <h3 className="text-3xl md:text-4xl font-black tracking-tighter leading-none">SELL DIRECT.</h3>
-              <p className="text-sm md:text-base font-bold opacity-90 leading-tight">Skip the middleman. Reach serious buyers with market-truth data.</p>
+          <Card className="p-4 md:p-8 space-y-4 md:space-y-6 bg-accent text-black border-none order-2 lg:order-3 flex flex-col justify-center">
+            <div className="space-y-1.5 md:space-y-2">
+              <h3 className="text-2xl md:text-4xl font-black tracking-tighter leading-none">SELL DIRECT.</h3>
+              <p className="text-xs md:text-base font-bold opacity-90 leading-tight">Skip the middleman. Reach serious buyers with market-truth data.</p>
             </div>
-            <div className="grid grid-cols-1 gap-2 md:gap-3">
+            <div className="grid grid-cols-3 md:grid-cols-1 gap-1 md:gap-3">
               {[
                 'Zero listing fees',
                 'Verified buyers',
                 'Market-truth pricing',
               ].map((text, i) => (
-                <div key={i} className="flex items-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-tight">
-                  <CheckCircle2 size={14} className="md:w-4 md:h-4" />
+                <div key={i} className="flex items-center gap-1.5 md:gap-2 text-[9px] md:text-xs font-black uppercase tracking-tight">
+                  <CheckCircle2 size={12} className="md:w-4 md:h-4 shrink-0" />
                   {text}
                 </div>
               ))}
             </div>
-            <Button className="w-full bg-black text-white hover:bg-black/90 border-none h-14 text-base font-black rounded-xl shadow-xl mt-2" onClick={onListClick}>
+            <Button className="w-full bg-black text-white hover:bg-black/90 border-none h-11 md:h-14 text-sm md:text-base font-black rounded-xl shadow-xl" onClick={onListClick}>
               List My Item Now
             </Button>
           </Card>
@@ -765,8 +757,8 @@ const HomePage = ({ onSearch, setActivePage, handleSelectItem, onListClick, item
             { label: 'Daily Updates', value: '12k+' },
             { label: 'Active Users', value: '85k+' },
           ].map((s, i) => (
-            <div key={i} className="p-5 md:p-6 rounded-2xl bg-secondary/10 border border-white/5 text-center group hover:border-accent/30 transition-colors">
-              <div className="text-2xl md:text-3xl font-black text-accent mb-1 group-hover:scale-110 transition-transform">{s.value}</div>
+            <div key={i} className="p-3 md:p-6 rounded-xl md:rounded-2xl bg-secondary/10 border border-white/5 text-center group hover:border-accent/30 transition-colors">
+              <div className="text-lg md:text-3xl font-black text-accent mb-0.5 md:mb-1 group-hover:scale-110 transition-transform">{s.value}</div>
               <div className="text-[9px] md:text-xs text-muted-foreground uppercase tracking-widest font-black">{s.label}</div>
             </div>
           ))}
@@ -775,7 +767,7 @@ const HomePage = ({ onSearch, setActivePage, handleSelectItem, onListClick, item
 
       {/* Market Trends Section */}
       <section className="container mx-auto px-4">
-        <div className="p-6 md:p-8 rounded-[2rem] bg-secondary/10 border border-white/5 relative overflow-hidden">
+        <div className="p-4 md:p-8 rounded-2xl md:rounded-[2rem] bg-secondary/10 border border-white/5 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none hidden md:block">
             <TrendingUp size={200} />
           </div>
