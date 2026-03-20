@@ -1633,7 +1633,30 @@ const AGENTIC_PLATFORMS = [
   'Proxibid', 'BigIron', 'AuctionTime', 'Machinery Trader', 'Other'
 ];
 
-const AgenticListingForm = ({ onSubmitListing, onNavigateToLive }: { onSubmitListing: (formData: any) => void, onNavigateToLive: () => void }) => {
+const BULK_PLACEHOLDER = `[
+  {
+    "source_platform": "Garthbid",
+    "source_url": "https://www.garthbid.com/en/auction/abc123",
+    "category": "Vehicles",
+    "title": "2017 Ford Expedition Platinum Max",
+    "year": 2017,
+    "make": "Ford",
+    "model": "Expedition Platinum Max",
+    "location": "Westlock, AB",
+    "description": "Great looking Large SUV...",
+    "photos": ["https://example.com/photo1.jpg"],
+    "vin": "1FMJK1MT9HEA71393",
+    "km_hours": "255000 km",
+    "currency": "CAD",
+    "starting_price": 250
+  }
+]`;
+
+const AgenticListingForm = ({ onSubmitListing, onBulkImport, onNavigateToLive }: { onSubmitListing: (formData: any) => void, onBulkImport: (items: any[]) => number, onNavigateToLive: () => void }) => {
+  const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('bulk');
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Single item form state
   const [formData, setFormData] = useState({
     sourcePlatform: '',
     sourceUrl: '',
@@ -1650,17 +1673,75 @@ const AgenticListingForm = ({ onSubmitListing, onNavigateToLive }: { onSubmitLis
     currency: 'CAD',
     startingPrice: '',
   });
-  const [submitted, setSubmitted] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [singleSubmitted, setSingleSubmitted] = useState(false);
+
+  // Bulk import state
+  const [bulkJson, setBulkJson] = useState('');
+  const [bulkError, setBulkError] = useState('');
+  const [bulkItemCount, setBulkItemCount] = useState(0);
+  const [bulkSuccess, setBulkSuccess] = useState<number | null>(null);
 
   const update = (field: string, value: string) => setFormData(prev => ({ ...prev, [field]: value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Parse bulk JSON on change
+  const handleBulkChange = (value: string) => {
+    setBulkJson(value);
+    setBulkError('');
+    setBulkSuccess(null);
+    if (!value.trim()) {
+      setBulkItemCount(0);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(value);
+      if (!Array.isArray(parsed)) {
+        setBulkError('JSON must be an array of items');
+        setBulkItemCount(0);
+        return;
+      }
+      setBulkItemCount(parsed.length);
+    } catch {
+      setBulkError('Invalid JSON — check syntax');
+      setBulkItemCount(0);
+    }
+  };
+
+  const handleBulkImport = () => {
+    setBulkError('');
+    if (!bulkJson.trim()) {
+      setBulkError('Paste your JSON array first');
+      return;
+    }
+    try {
+      const parsed = JSON.parse(bulkJson);
+      if (!Array.isArray(parsed)) {
+        setBulkError('JSON must be an array of items');
+        return;
+      }
+      if (parsed.length === 0) {
+        setBulkError('Array is empty — nothing to import');
+        return;
+      }
+      const count = onBulkImport(parsed);
+      setBulkSuccess(count);
+      setBulkJson('');
+      setBulkItemCount(0);
+      setTimeout(() => {
+        setBulkSuccess(null);
+        setIsExpanded(false);
+        onNavigateToLive();
+      }, 2500);
+    } catch {
+      setBulkError('Invalid JSON — check syntax');
+    }
+  };
+
+  const handleSingleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmitListing(formData);
-    setSubmitted(true);
+    setSingleSubmitted(true);
     setTimeout(() => {
-      setSubmitted(false);
+      setSingleSubmitted(false);
       setFormData({
         sourcePlatform: '', sourceUrl: '', category: '', title: '', year: '',
         make: '', model: '', location: '', description: '', photoUrls: '',
@@ -1704,7 +1785,7 @@ const AgenticListingForm = ({ onSubmitListing, onNavigateToLive }: { onSubmitLis
           </div>
         </button>
 
-        {/* Expandable Form */}
+        {/* Expandable Content */}
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -1714,219 +1795,318 @@ const AgenticListingForm = ({ onSubmitListing, onNavigateToLive }: { onSubmitLis
               transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
               className="overflow-hidden"
             >
-              {submitted ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="mt-10 p-12 rounded-3xl border border-accent/20 bg-accent/5 text-center"
+              {/* Tabs */}
+              <div className="mt-8 flex gap-2">
+                <button
+                  onClick={() => setActiveTab('single')}
+                  className={cn(
+                    "px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                    activeTab === 'single'
+                      ? "bg-accent/20 text-accent border border-accent/30"
+                      : "bg-white/5 text-muted-foreground border border-white/10 hover:border-white/20 hover:text-foreground"
+                  )}
                 >
-                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 size={32} className="text-accent" />
-                  </div>
-                  <h4 className="text-xl font-black uppercase tracking-tight">Listing Posted</h4>
-                  <p className="text-sm text-muted-foreground mt-2">Set it and forget it. Your listing is live.</p>
-                </motion.div>
-              ) : (
-                <form onSubmit={handleSubmit} className="mt-10 space-y-8">
-                  {/* Source Section */}
-                  <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Lock size={12} className="text-accent" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-accent">Source (Paywalled)</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className={labelClass}><Globe size={12} /> Source Platform</label>
-                        <select
-                          value={formData.sourcePlatform}
-                          onChange={e => update('sourcePlatform', e.target.value)}
-                          className={selectClass}
-                          required
-                        >
-                          <option value="" className="bg-background">Select platform...</option>
-                          {AGENTIC_PLATFORMS.map(p => (
-                            <option key={p} value={p} className="bg-background">{p}</option>
-                          ))}
-                        </select>
+                  <PlusCircle size={14} className="inline mr-2 -mt-0.5" />
+                  Single Item
+                </button>
+                <button
+                  onClick={() => setActiveTab('bulk')}
+                  className={cn(
+                    "px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                    activeTab === 'bulk'
+                      ? "bg-accent/20 text-accent border border-accent/30"
+                      : "bg-white/5 text-muted-foreground border border-white/10 hover:border-white/20 hover:text-foreground"
+                  )}
+                >
+                  <Upload size={14} className="inline mr-2 -mt-0.5" />
+                  Bulk Import
+                </button>
+              </div>
+
+              {/* ── BULK IMPORT TAB ── */}
+              {activeTab === 'bulk' && (
+                <div className="mt-6 space-y-4">
+                  {bulkSuccess !== null ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="p-12 rounded-3xl border border-accent/20 bg-accent/5 text-center"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 size={32} className="text-accent" />
                       </div>
+                      <h4 className="text-xl font-black uppercase tracking-tight">{bulkSuccess} Items Imported</h4>
+                      <p className="text-sm text-muted-foreground mt-2">Redirecting to Live Auctions...</p>
+                    </motion.div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          <FileText size={12} /> Paste JSON Array
+                        </label>
+                        <div className="flex items-center gap-3">
+                          {bulkItemCount > 0 && (
+                            <span className="text-xs font-black text-accent">
+                              {bulkItemCount} item{bulkItemCount !== 1 ? 's' : ''} detected
+                            </span>
+                          )}
+                          {bulkError && (
+                            <span className="text-xs font-bold text-red-500 flex items-center gap-1">
+                              <AlertTriangle size={12} /> {bulkError}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <textarea
+                        value={bulkJson}
+                        onChange={e => handleBulkChange(e.target.value)}
+                        placeholder={BULK_PLACEHOLDER}
+                        className={cn(
+                          "w-full bg-black/60 border rounded-2xl px-5 py-4 text-sm text-foreground font-mono leading-relaxed placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 transition-all resize-y",
+                          bulkError
+                            ? "border-red-500/50 focus:border-red-500/80 focus:ring-red-500/30"
+                            : "border-white/10 focus:border-accent/50 focus:ring-accent/30"
+                        )}
+                        style={{ minHeight: '400px' }}
+                      />
+                      <div className="flex justify-end pt-2">
+                        <Button
+                          onClick={handleBulkImport}
+                          disabled={bulkItemCount === 0}
+                          className={cn(
+                            "h-14 px-10 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all active:scale-[0.98]",
+                            bulkItemCount > 0
+                              ? "bg-accent text-black hover:bg-accent/90 shadow-accent/20"
+                              : "bg-white/10 text-muted-foreground cursor-not-allowed shadow-none"
+                          )}
+                        >
+                          <Upload size={16} className="mr-2" />
+                          Paste & Import{bulkItemCount > 0 ? ` (${bulkItemCount})` : ''}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── SINGLE ITEM TAB ── */}
+              {activeTab === 'single' && (
+                <>
+                  {singleSubmitted ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mt-6 p-12 rounded-3xl border border-accent/20 bg-accent/5 text-center"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 size={32} className="text-accent" />
+                      </div>
+                      <h4 className="text-xl font-black uppercase tracking-tight">Listing Posted</h4>
+                      <p className="text-sm text-muted-foreground mt-2">Set it and forget it. Your listing is live.</p>
+                    </motion.div>
+                  ) : (
+                    <form onSubmit={handleSingleSubmit} className="mt-6 space-y-8">
+                      {/* Source Section */}
+                      <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Lock size={12} className="text-accent" />
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-accent">Source (Paywalled)</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className={labelClass}><Globe size={12} /> Source Platform</label>
+                            <select
+                              value={formData.sourcePlatform}
+                              onChange={e => update('sourcePlatform', e.target.value)}
+                              className={selectClass}
+                              required
+                            >
+                              <option value="" className="bg-background">Select platform...</option>
+                              {AGENTIC_PLATFORMS.map(p => (
+                                <option key={p} value={p} className="bg-background">{p}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className={labelClass}><Link size={12} /> Source URL</label>
+                            <input
+                              type="url"
+                              value={formData.sourceUrl}
+                              onChange={e => update('sourceUrl', e.target.value)}
+                              placeholder="https://..."
+                              className={inputClass}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Details Section */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <label className={labelClass}><Filter size={12} /> Category</label>
+                          <select
+                            value={formData.category}
+                            onChange={e => update('category', e.target.value)}
+                            className={selectClass}
+                            required
+                          >
+                            <option value="" className="bg-background">Select...</option>
+                            {AGENTIC_CATEGORIES.map(c => (
+                              <option key={c} value={c} className="bg-background">{c}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="lg:col-span-3">
+                          <label className={labelClass}><FileText size={12} /> Title</label>
+                          <input
+                            type="text"
+                            value={formData.title}
+                            onChange={e => update('title', e.target.value)}
+                            placeholder="2021 John Deere 8R 370"
+                            className={inputClass}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className={labelClass}><Clock size={12} /> Year</label>
+                          <input
+                            type="number"
+                            value={formData.year}
+                            onChange={e => update('year', e.target.value)}
+                            placeholder="2021"
+                            min="1900"
+                            max="2030"
+                            className={inputClass}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className={labelClass}>Make</label>
+                          <input
+                            type="text"
+                            value={formData.make}
+                            onChange={e => update('make', e.target.value)}
+                            placeholder="John Deere"
+                            className={inputClass}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className={labelClass}>Model</label>
+                          <input
+                            type="text"
+                            value={formData.model}
+                            onChange={e => update('model', e.target.value)}
+                            placeholder="8R 370"
+                            className={inputClass}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className={labelClass}><MapPin size={12} /> Location</label>
+                          <input
+                            type="text"
+                            value={formData.location}
+                            onChange={e => update('location', e.target.value)}
+                            placeholder="Saskatoon, SK"
+                            className={inputClass}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className={labelClass}><Hash size={12} /> VIN / Serial #</label>
+                          <input
+                            type="text"
+                            value={formData.vinSerial}
+                            onChange={e => update('vinSerial', e.target.value)}
+                            placeholder="1HGBH41JXMN109186"
+                            className={inputClass}
+                          />
+                        </div>
+                      </div>
+
                       <div>
-                        <label className={labelClass}><Link size={12} /> Source URL</label>
-                        <input
-                          type="url"
-                          value={formData.sourceUrl}
-                          onChange={e => update('sourceUrl', e.target.value)}
-                          placeholder="https://..."
-                          className={inputClass}
+                        <label className={labelClass}><Info size={12} /> Description</label>
+                        <textarea
+                          value={formData.description}
+                          onChange={e => update('description', e.target.value)}
+                          placeholder="Condition, features, service history..."
+                          rows={3}
+                          className={cn(inputClass, "resize-none")}
                           required
                         />
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Details Section */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <label className={labelClass}><Filter size={12} /> Category</label>
-                      <select
-                        value={formData.category}
-                        onChange={e => update('category', e.target.value)}
-                        className={selectClass}
-                        required
-                      >
-                        <option value="" className="bg-background">Select...</option>
-                        {AGENTIC_CATEGORIES.map(c => (
-                          <option key={c} value={c} className="bg-background">{c}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="lg:col-span-3">
-                      <label className={labelClass}><FileText size={12} /> Title</label>
-                      <input
-                        type="text"
-                        value={formData.title}
-                        onChange={e => update('title', e.target.value)}
-                        placeholder="2021 John Deere 8R 370"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
-                  </div>
+                      <div>
+                        <label className={labelClass}><Camera size={12} /> Photo URLs (one per line)</label>
+                        <textarea
+                          value={formData.photoUrls}
+                          onChange={e => update('photoUrls', e.target.value)}
+                          placeholder={"https://images.example.com/photo1.jpg\nhttps://images.example.com/photo2.jpg"}
+                          rows={3}
+                          className={cn(inputClass, "resize-none font-mono text-xs")}
+                          required
+                        />
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className={labelClass}><Clock size={12} /> Year</label>
-                      <input
-                        type="number"
-                        value={formData.year}
-                        onChange={e => update('year', e.target.value)}
-                        placeholder="2021"
-                        min="1900"
-                        max="2030"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Make</label>
-                      <input
-                        type="text"
-                        value={formData.make}
-                        onChange={e => update('make', e.target.value)}
-                        placeholder="John Deere"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Model</label>
-                      <input
-                        type="text"
-                        value={formData.model}
-                        onChange={e => update('model', e.target.value)}
-                        placeholder="8R 370"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
-                  </div>
+                      {/* Bottom row: Hours/KMs, Currency, Starting Price */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className={labelClass}><Gauge size={12} /> Hours / KMs</label>
+                          <input
+                            type="text"
+                            value={formData.hoursKms}
+                            onChange={e => update('hoursKms', e.target.value)}
+                            placeholder="3,200 hrs"
+                            className={inputClass}
+                          />
+                        </div>
+                        <div>
+                          <label className={labelClass}><DollarSign size={12} /> Currency</label>
+                          <select
+                            value={formData.currency}
+                            onChange={e => update('currency', e.target.value)}
+                            className={selectClass}
+                          >
+                            {AGENTIC_CURRENCIES.map(c => (
+                              <option key={c} value={c} className="bg-background">{c}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className={labelClass}><DollarSign size={12} /> Starting Price</label>
+                          <input
+                            type="number"
+                            value={formData.startingPrice}
+                            onChange={e => update('startingPrice', e.target.value)}
+                            placeholder="50000"
+                            min="0"
+                            className={inputClass}
+                            required
+                          />
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className={labelClass}><MapPin size={12} /> Location</label>
-                      <input
-                        type="text"
-                        value={formData.location}
-                        onChange={e => update('location', e.target.value)}
-                        placeholder="Saskatoon, SK"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}><Hash size={12} /> VIN / Serial #</label>
-                      <input
-                        type="text"
-                        value={formData.vinSerial}
-                        onChange={e => update('vinSerial', e.target.value)}
-                        placeholder="1HGBH41JXMN109186"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}><Info size={12} /> Description</label>
-                    <textarea
-                      value={formData.description}
-                      onChange={e => update('description', e.target.value)}
-                      placeholder="Condition, features, service history..."
-                      rows={3}
-                      className={cn(inputClass, "resize-none")}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}><Camera size={12} /> Photo URLs (one per line)</label>
-                    <textarea
-                      value={formData.photoUrls}
-                      onChange={e => update('photoUrls', e.target.value)}
-                      placeholder={"https://images.example.com/photo1.jpg\nhttps://images.example.com/photo2.jpg"}
-                      rows={3}
-                      className={cn(inputClass, "resize-none font-mono text-xs")}
-                      required
-                    />
-                  </div>
-
-                  {/* Bottom row: Hours/KMs, Currency, Starting Price */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className={labelClass}><Gauge size={12} /> Hours / KMs</label>
-                      <input
-                        type="text"
-                        value={formData.hoursKms}
-                        onChange={e => update('hoursKms', e.target.value)}
-                        placeholder="3,200 hrs"
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}><DollarSign size={12} /> Currency</label>
-                      <select
-                        value={formData.currency}
-                        onChange={e => update('currency', e.target.value)}
-                        className={selectClass}
-                      >
-                        {AGENTIC_CURRENCIES.map(c => (
-                          <option key={c} value={c} className="bg-background">{c}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelClass}><DollarSign size={12} /> Starting Price</label>
-                      <input
-                        type="number"
-                        value={formData.startingPrice}
-                        onChange={e => update('startingPrice', e.target.value)}
-                        placeholder="50000"
-                        min="0"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Submit */}
-                  <div className="flex justify-end pt-4">
-                    <Button
-                      type="submit"
-                      className="h-14 px-10 rounded-2xl bg-accent text-black font-black text-sm uppercase tracking-widest hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
-                    >
-                      <Upload size={16} className="mr-2" />
-                      Post Listing
-                    </Button>
-                  </div>
-                </form>
+                      {/* Submit */}
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          type="submit"
+                          className="h-14 px-10 rounded-2xl bg-accent text-black font-black text-sm uppercase tracking-widest hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
+                        >
+                          <Upload size={16} className="mr-2" />
+                          Post Listing
+                        </Button>
+                      </div>
+                    </form>
+                  )}
+                </>
               )}
             </motion.div>
           )}
@@ -1983,6 +2163,36 @@ export default function App() {
       isNative: true,
     };
     setItems(prev => [newItem, ...prev]);
+  };
+
+  const handleBulkImport = (rawItems: any[]): number => {
+    const newItems: AuctionItem[] = rawItems.map((raw, i) => ({
+      id: `bulk-${Date.now()}-${i}`,
+      title: raw.title || `${raw.year} ${raw.make} ${raw.model}`,
+      category: raw.category || 'Other',
+      year: typeof raw.year === 'number' ? raw.year : parseInt(raw.year) || 0,
+      make: raw.make || '',
+      model: raw.model || '',
+      location: raw.location || '',
+      price: typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0,
+      currentBid: typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0,
+      auctionSource: raw.source_platform || 'Unknown',
+      imageUrl: (Array.isArray(raw.photos) && raw.photos[0]) || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
+      status: 'live' as const,
+      timeLeft: '23h 59m',
+      views: 0,
+      fairValueRange: [
+        (typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0) * 0.9,
+        (typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0) * 1.1
+      ],
+      recommendedMaxBid: (typeof raw.starting_price === 'number' ? raw.starting_price : parseFloat(raw.starting_price) || 0) * 1.05,
+      buyerEdgeScore: 'Strong Buy' as const,
+      confidenceScore: 85,
+      riskFlags: ['New listing — limited market data'],
+      isNative: true,
+    }));
+    setItems(prev => [...newItems, ...prev]);
+    return newItems.length;
   };
 
   const handleSearch = (q: string) => {
@@ -2138,7 +2348,7 @@ export default function App() {
       <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />
 
       {/* Agentic Listing Form */}
-      <AgenticListingForm onSubmitListing={handleAgenticListing} onNavigateToLive={() => { setActivePage('live'); window.scrollTo(0, 0); }} />
+      <AgenticListingForm onSubmitListing={handleAgenticListing} onBulkImport={handleBulkImport} onNavigateToLive={() => { setActivePage('live'); window.scrollTo(0, 0); }} />
 
       {/* Footer */}
       <footer className="border-t border-border bg-secondary/20 py-12">
