@@ -72,9 +72,10 @@ import { AuctionItem, IntelligenceReport } from './types';
 
 interface PriceEntry {
   price: number;
+  starts_at: string;
   ends_at: string;
   bids: number;
-  is_live: boolean;
+  status: 'upcoming' | 'live' | 'sold';
 }
 
 interface PricesData {
@@ -122,35 +123,71 @@ function usePrices() {
   return { prices, lastFetched, getPrice };
 }
 
-// Countdown timer that ticks every second client-side
-const LiveCountdown = ({ endsAt }: { endsAt: string }) => {
-  const [timeLeft, setTimeLeft] = useState('');
+function formatCountdown(diff: number): string {
+  if (diff <= 0) return 'ENDED';
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const mins = Math.floor((diff / (1000 * 60)) % 60);
+  const secs = Math.floor((diff / 1000) % 60);
+  if (days > 0) return `${days}d ${hours}h ${mins}m`;
+  if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
+  return `${mins}m ${secs}s`;
+}
+
+// Countdown timer that ticks every second, supports upcoming→live auto-transition
+const LiveCountdown = ({ startsAt, endsAt, status, onStatusChange }: {
+  startsAt?: string;
+  endsAt: string;
+  status: 'upcoming' | 'live' | 'sold';
+  onStatusChange?: (newStatus: 'live' | 'sold') => void;
+}) => {
+  const [display, setDisplay] = useState('');
+  const [label, setLabel] = useState('');
+  const currentStatus = useRef(status);
+
+  useEffect(() => {
+    currentStatus.current = status;
+  }, [status]);
 
   useEffect(() => {
     const tick = () => {
-      const diff = new Date(endsAt).getTime() - Date.now();
-      if (diff <= 0) {
-        setTimeLeft('ENDED');
+      if (currentStatus.current === 'sold') {
+        setDisplay('');
+        setLabel('SOLD');
         return;
       }
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-      const mins = Math.floor((diff / (1000 * 60)) % 60);
-      const secs = Math.floor((diff / 1000) % 60);
-      if (days > 0) {
-        setTimeLeft(`${days}d ${hours}h ${mins}m`);
-      } else if (hours > 0) {
-        setTimeLeft(`${hours}h ${mins}m ${secs}s`);
-      } else {
-        setTimeLeft(`${mins}m ${secs}s`);
+
+      if (currentStatus.current === 'upcoming' && startsAt) {
+        const diff = new Date(startsAt).getTime() - Date.now();
+        if (diff <= 0) {
+          // Auto-transition to live
+          currentStatus.current = 'live';
+          onStatusChange?.('live');
+        } else {
+          setLabel('Starts in');
+          setDisplay(formatCountdown(diff));
+          return;
+        }
       }
+
+      // Live
+      const diff = new Date(endsAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setLabel('');
+        setDisplay('ENDED');
+        onStatusChange?.('sold');
+        return;
+      }
+      setLabel('Ends in');
+      setDisplay(formatCountdown(diff));
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [endsAt]);
+  }, [startsAt, endsAt, onStatusChange]);
 
-  return <>{timeLeft}</>;
+  if (!display && !label) return null;
+  return <>{label ? `${label} ${display}` : display}</>;
 };
 
 // --- Components ---
@@ -304,8 +341,16 @@ const AuctionCard: React.FC<{
 
   // Determine display values — live price overlay wins if available
   const displayPrice = livePrice ? livePrice.price : (item.status === 'live' ? item.currentBid || 0 : item.price || 0);
-  const isSold = livePrice ? !livePrice.is_live : item.status !== 'live';
-  const displayStatus = isSold ? 'sold' : 'live';
+  const [liveStatus, setLiveStatus] = useState<'upcoming' | 'live' | 'sold'>(
+    livePrice ? livePrice.status : (item.status === 'live' ? 'live' : item.status === 'sold' ? 'sold' : 'upcoming')
+  );
+
+  // Sync with new price data from fetch
+  useEffect(() => {
+    if (livePrice) setLiveStatus(livePrice.status);
+  }, [livePrice]);
+
+  const displayStatus = livePrice ? liveStatus : (item.status === 'live' ? 'live' : 'sold');
 
   return (
     <Card
@@ -328,21 +373,41 @@ const AuctionCard: React.FC<{
           referrerPolicy="no-referrer"
         />
         <div className="absolute top-2 md:top-3 left-2 md:left-3 flex flex-col gap-1 md:gap-2">
-          {displayStatus === 'live' ? (
+          {displayStatus === 'upcoming' && (
+            <Badge variant="warning" className="bg-yellow-500/90 text-black border-none font-black text-[8px] md:text-[10px]">UPCOMING</Badge>
+          )}
+          {displayStatus === 'live' && (
             <Badge variant="accent" className="bg-red-500 text-white border-none font-black animate-pulse text-[8px] md:text-[10px]">LIVE</Badge>
-          ) : (
+          )}
+          {displayStatus === 'sold' && (
             <Badge variant="secondary" className="font-bold text-[8px] md:text-[10px]">SOLD</Badge>
           )}
           {item.isNative && (
             <Badge variant="accent" className="bg-accent text-black border-none font-black text-[8px] md:text-[10px]">DIRECT</Badge>
           )}
         </div>
-        {displayStatus === 'live' && (
-          <div className="absolute bottom-2 md:bottom-3 right-2 md:right-3 px-1.5 md:px-2 py-0.5 md:py-1 bg-black/80 backdrop-blur-md rounded-lg text-[8px] md:text-[10px] font-black text-white flex items-center gap-1 md:gap-1.5 border border-white/10">
-            <Timer size={10} className="text-accent md:w-3 md:h-3" />
-            {livePrice ? <LiveCountdown endsAt={livePrice.ends_at} /> : item.timeLeft}
+        {/* Timer overlay for upcoming and live */}
+        {livePrice && (displayStatus === 'upcoming' || displayStatus === 'live') && (
+          <div className={cn(
+            "absolute bottom-2 md:bottom-3 right-2 md:right-3 px-1.5 md:px-2 py-0.5 md:py-1 bg-black/80 backdrop-blur-md rounded-lg text-[8px] md:text-[10px] font-black text-white flex items-center gap-1 md:gap-1.5 border border-white/10",
+          )}>
+            <Timer size={10} className={cn("md:w-3 md:h-3", displayStatus === 'upcoming' ? "text-yellow-500" : "text-accent")} />
+            <LiveCountdown
+              startsAt={livePrice.starts_at}
+              endsAt={livePrice.ends_at}
+              status={liveStatus}
+              onStatusChange={setLiveStatus}
+            />
           </div>
         )}
+        {/* Fallback timer for items without livePrice */}
+        {!livePrice && item.status === 'live' && (
+          <div className="absolute bottom-2 md:bottom-3 right-2 md:right-3 px-1.5 md:px-2 py-0.5 md:py-1 bg-black/80 backdrop-blur-md rounded-lg text-[8px] md:text-[10px] font-black text-white flex items-center gap-1 md:gap-1.5 border border-white/10">
+            <Timer size={10} className="text-accent md:w-3 md:h-3" />
+            {item.timeLeft}
+          </div>
+        )}
+        {/* SOLD overlay */}
         {displayStatus === 'sold' && livePrice && (
           <div className="absolute bottom-2 md:bottom-3 right-2 md:right-3 px-1.5 md:px-2 py-0.5 md:py-1 bg-black/80 backdrop-blur-md rounded-lg text-[8px] md:text-[10px] font-black text-muted-foreground flex items-center gap-1 md:gap-1.5 border border-white/10">
             SOLD
