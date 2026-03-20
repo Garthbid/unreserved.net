@@ -409,7 +409,7 @@ const MarketInsight = ({ category, itemTitle }: { category: string, itemTitle?: 
 
 // --- Pages ---
 
-const HomePage = ({ onSearch, setActivePage, handleSelectItem, onListClick }: { onSearch: (q: string) => void, setActivePage: (p: any) => void, handleSelectItem: (item: AuctionItem) => void, onListClick: () => void }) => {
+const HomePage = ({ onSearch, setActivePage, handleSelectItem, onListClick, items }: { onSearch: (q: string) => void, setActivePage: (p: any) => void, handleSelectItem: (item: AuctionItem) => void, onListClick: () => void, items: AuctionItem[] }) => {
   const [query, setQuery] = useState('');
 
   return (
@@ -503,7 +503,7 @@ const HomePage = ({ onSearch, setActivePage, handleSelectItem, onListClick }: { 
               <span className="text-[8px] md:text-[9px] text-muted-foreground font-black tracking-widest">LIVE PULSE</span>
             </div>
             <div className="space-y-2 md:space-y-3">
-              {MOCK_ITEMS.filter(i => i.status === 'live').slice(0, 3).map((item) => (
+              {items.filter(i => i.status === 'live').slice(0, 3).map((item) => (
                 <div key={item.id} className="flex items-center gap-3 md:gap-4 group cursor-pointer p-2 rounded-xl hover:bg-white/5 transition-colors" onClick={() => handleSelectItem(item)}>
                   <div className="w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden shrink-0 border border-white/5">
                     <img src={item.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt="" referrerPolicy="no-referrer" />
@@ -697,18 +697,18 @@ const HomePage = ({ onSearch, setActivePage, handleSelectItem, onListClick }: { 
   );
 };
 
-const SearchResultsPage = ({ query, onSelectItem, onList }: { query: string, onSelectItem: (item: AuctionItem) => void, onList: () => void }) => {
+const SearchResultsPage = ({ query, onSelectItem, onList, items }: { query: string, onSelectItem: (item: AuctionItem) => void, onList: () => void, items: AuctionItem[] }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('relevance');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   
   const filteredItems = useMemo(() => {
-    if (!query) return MOCK_ITEMS;
-    return MOCK_ITEMS.filter(item => 
+    if (!query) return items;
+    return items.filter(item =>
       item.title.toLowerCase().includes(query.toLowerCase()) ||
       item.category.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query]);
+  }, [query, items]);
 
   const categories = ['All Categories', 'Excavators', 'Tractors', 'Pickup Trucks', 'Trailers', 'Combines', 'Industrial'];
 
@@ -857,7 +857,7 @@ const SearchResultsPage = ({ query, onSelectItem, onList }: { query: string, onS
                   <h3 className="text-xl font-black">No results found</h3>
                   <p className="text-muted-foreground text-sm">Try adjusting your search or filters to find what you're looking for.</p>
                 </div>
-                <Button variant="outline" onClick={() => onSelectItem(MOCK_ITEMS[0])}>Browse All Items</Button>
+                <Button variant="outline" onClick={() => onSelectItem(items[0])}>Browse All Items</Button>
               </div>
             )}
           </div>
@@ -944,7 +944,7 @@ const SearchResultsPage = ({ query, onSelectItem, onList }: { query: string, onS
   );
 };
 
-const ItemDetailPage = ({ item, onBack, onList }: { item: AuctionItem, onBack: () => void, onList: () => void }) => {
+const ItemDetailPage = ({ item, onBack, onList, items }: { item: AuctionItem, onBack: () => void, onList: () => void, items: AuctionItem[] }) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   const getBuyerEdgeColor = (score: string) => {
@@ -1065,7 +1065,7 @@ const ItemDetailPage = ({ item, onBack, onList }: { item: AuctionItem, onBack: (
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {MOCK_ITEMS.filter(i => i.category === item.category && i.status === 'sold').slice(0, 4).map((comp, i) => (
+                    {items.filter(i => i.category === item.category && i.status === 'sold').slice(0, 4).map((comp, i) => (
                       <tr key={i} className="hover:bg-white/5 transition-colors group cursor-pointer">
                         <td className="px-4 py-4 font-bold group-hover:text-accent">{comp.year} {comp.make} {comp.model}</td>
                         <td className="px-4 py-4 text-muted-foreground">{comp.saleDate}</td>
@@ -1253,7 +1253,7 @@ const ItemDetailPage = ({ item, onBack, onList }: { item: AuctionItem, onBack: (
   );
 };
 
-const LiveFeedPage = ({ onSelectItem }: { onSelectItem: (item: AuctionItem) => void }) => {
+const LiveFeedPage = ({ onSelectItem, items }: { onSelectItem: (item: AuctionItem) => void, items: AuctionItem[] }) => {
   return (
     <div className="flex flex-col gap-6 md:gap-12 pb-24 md:pb-12">
       {/* Live Ticker */}
@@ -1294,7 +1294,7 @@ const LiveFeedPage = ({ onSelectItem }: { onSelectItem: (item: AuctionItem) => v
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {MOCK_ITEMS.filter(i => i.status === 'live').map((item) => (
+          {items.filter(i => i.status === 'live').map((item) => (
             <AuctionCard 
               key={item.id} 
               item={item} 
@@ -1633,7 +1633,7 @@ const AGENTIC_PLATFORMS = [
   'Proxibid', 'BigIron', 'AuctionTime', 'Machinery Trader', 'Other'
 ];
 
-const AgenticListingForm = () => {
+const AgenticListingForm = ({ onSubmitListing, onNavigateToLive }: { onSubmitListing: (formData: any) => void, onNavigateToLive: () => void }) => {
   const [formData, setFormData] = useState({
     sourcePlatform: '',
     sourceUrl: '',
@@ -1657,7 +1657,7 @@ const AgenticListingForm = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Agentic Listing Submitted:', formData);
+    onSubmitListing(formData);
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
@@ -1667,6 +1667,7 @@ const AgenticListingForm = () => {
         vinSerial: '', hoursKms: '', currency: 'CAD', startingPrice: '',
       });
       setIsExpanded(false);
+      onNavigateToLive();
     }, 3000);
   };
 
@@ -1941,6 +1942,48 @@ export default function App() {
   const [selectedItem, setSelectedItem] = useState<AuctionItem | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [items, setItems] = useState<AuctionItem[]>(MOCK_ITEMS);
+
+  const handleAgenticListing = (formData: {
+    sourcePlatform: string;
+    sourceUrl: string;
+    category: string;
+    title: string;
+    year: string;
+    make: string;
+    model: string;
+    location: string;
+    description: string;
+    photoUrls: string;
+    vinSerial: string;
+    hoursKms: string;
+    currency: string;
+    startingPrice: string;
+  }) => {
+    const newItem: AuctionItem = {
+      id: `agentic-${Date.now()}`,
+      title: `${formData.year} ${formData.make} ${formData.model}`,
+      category: formData.category,
+      year: parseInt(formData.year),
+      make: formData.make,
+      model: formData.model,
+      location: formData.location,
+      price: parseFloat(formData.startingPrice),
+      currentBid: parseFloat(formData.startingPrice),
+      auctionSource: formData.sourcePlatform,
+      imageUrl: formData.photoUrls.split('\n').filter(Boolean)[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
+      status: 'live',
+      timeLeft: '23h 59m',
+      views: 0,
+      fairValueRange: [parseFloat(formData.startingPrice) * 0.9, parseFloat(formData.startingPrice) * 1.1],
+      recommendedMaxBid: parseFloat(formData.startingPrice) * 1.05,
+      buyerEdgeScore: 'Strong Buy',
+      confidenceScore: 85,
+      riskFlags: ['New listing — limited market data'],
+      isNative: true,
+    };
+    setItems(prev => [newItem, ...prev]);
+  };
 
   const handleSearch = (q: string) => {
     setSearchQuery(q);
@@ -2066,22 +2109,24 @@ export default function App() {
 
       {/* Page Content */}
       <main>
-        {activePage === 'home' && <HomePage onSearch={handleSearch} setActivePage={setActivePage} handleSelectItem={handleSelectItem} onListClick={() => setShowSubscriptionModal(true)} />}
+        {activePage === 'home' && <HomePage onSearch={handleSearch} setActivePage={setActivePage} handleSelectItem={handleSelectItem} onListClick={() => setShowSubscriptionModal(true)} items={items} />}
         {activePage === 'search' && (
-          <SearchResultsPage 
-            query={searchQuery} 
-            onSelectItem={handleSelectItem} 
-            onList={() => setShowSubscriptionModal(true)} 
+          <SearchResultsPage
+            query={searchQuery}
+            onSelectItem={handleSelectItem}
+            onList={() => setShowSubscriptionModal(true)}
+            items={items}
           />
         )}
         {activePage === 'detail' && selectedItem && (
-          <ItemDetailPage 
-            item={selectedItem} 
-            onBack={() => setActivePage('search')} 
+          <ItemDetailPage
+            item={selectedItem}
+            onBack={() => setActivePage('search')}
             onList={() => setShowSubscriptionModal(true)}
+            items={items}
           />
         )}
-        {activePage === 'live' && <LiveFeedPage onSelectItem={handleSelectItem} />}
+        {activePage === 'live' && <LiveFeedPage onSelectItem={handleSelectItem} items={items} />}
         {activePage === 'pricing' && <PricingPage setActivePage={setActivePage} />}
         {activePage === 'list' && <ListYourItemPage onComplete={() => setActivePage('home')} />}
       </main>
@@ -2093,7 +2138,7 @@ export default function App() {
       <SubscriptionModal isOpen={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} />
 
       {/* Agentic Listing Form */}
-      <AgenticListingForm />
+      <AgenticListingForm onSubmitListing={handleAgenticListing} onNavigateToLive={() => { setActivePage('live'); window.scrollTo(0, 0); }} />
 
       {/* Footer */}
       <footer className="border-t border-border bg-secondary/20 py-12">
