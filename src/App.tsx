@@ -375,7 +375,7 @@ const AuctionCard: React.FC<{
       {/* Image Section */}
       <div className={cn(
         "relative overflow-hidden",
-        viewMode === 'list' ? "w-32 md:w-72 shrink-0" : "aspect-[16/10]"
+        viewMode === 'list' ? "w-32 md:w-72 shrink-0" : "aspect-square md:aspect-[16/10]"
       )}>
         <img
           src={item.imageUrl}
@@ -427,32 +427,28 @@ const AuctionCard: React.FC<{
       </div>
 
       {/* Content Section */}
-      <div className="p-3 md:p-5 flex-1 flex flex-col min-w-0">
-        <div className="flex items-start justify-between mb-1 md:mb-2">
-          <div className="space-y-0.5 md:space-y-1 min-w-0">
-            <div className="flex items-center gap-1 text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">
-              <span>{item.auctionSource}</span>
-              <span className="w-0.5 h-0.5 md:w-1 md:h-1 rounded-full bg-border" />
-              <span>{item.location}</span>
-            </div>
-            <h3 className="font-bold text-sm md:text-lg leading-tight group-hover:text-accent transition-colors line-clamp-1">{item.title}</h3>
+      <div className="p-2 md:p-5 flex-1 flex flex-col min-w-0">
+        <div className="mb-0.5 md:mb-2 min-w-0">
+          <div className="flex items-center gap-1 text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">
+            <span className="truncate">{item.location}</span>
           </div>
+          <h3 className="font-bold text-xs md:text-lg leading-tight group-hover:text-accent transition-colors line-clamp-2 md:line-clamp-1 mt-0.5">{item.title}</h3>
         </div>
 
-        <div className="mt-auto pt-2 md:pt-4 border-t border-white/5 flex items-end justify-between">
-          <div className="space-y-0.5 md:space-y-1">
-            <span className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+        <div className="mt-auto pt-1.5 md:pt-4 border-t border-white/5 flex items-end justify-between">
+          <div>
+            <span className="text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               {livePrice ? (livePrice.bids > 0 ? `${livePrice.bids} bid${livePrice.bids !== 1 ? 's' : ''}` : 'Starting at') : 'Market Value'}
             </span>
-            <div className="text-base md:text-2xl font-black tracking-tighter">
+            <div className="text-sm md:text-2xl font-black tracking-tighter">
               {formatCurrency(displayPrice)}
             </div>
           </div>
 
-          <div className="text-right space-y-1 md:space-y-2">
+          <div className="hidden md:block text-right">
             <div className="flex flex-col items-end">
-              <span className="text-[8px] md:text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 md:mb-1">Buyer Edge</span>
-              <Badge variant={getBuyerEdgeColor(item.buyerEdgeScore || '')} className="text-[8px] md:text-[10px] font-black px-1.5 md:px-2 py-0.5">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Buyer Edge</span>
+              <Badge variant={getBuyerEdgeColor(item.buyerEdgeScore || '')} className="text-[10px] font-black px-2 py-0.5">
                 {item.buyerEdgeScore}
               </Badge>
             </div>
@@ -1007,7 +1003,7 @@ const SearchResultsPage = ({ query, onSelectItem, onList, items }: { query: stri
 
           <div className={cn(
             "grid gap-4 md:gap-6",
-            viewMode === 'grid' ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
+            viewMode === 'grid' ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
           )}>
             {filteredItems.map((item) => (
               <motion.div
@@ -1498,7 +1494,7 @@ const LiveFeedPage = ({ onSelectItem, items }: { onSelectItem: (item: AuctionIte
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6">
           {items.filter(i => i.status === 'live').map((item) => (
             <AuctionCard
               key={item.id}
