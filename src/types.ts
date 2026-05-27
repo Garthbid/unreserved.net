@@ -41,6 +41,13 @@ export interface PublicQuestion {
   answeredAt?: string;
 }
 
+export interface Comment {
+  author: string;
+  postedAt: string;
+  body: string;
+  likes?: number;
+}
+
 export interface AuctionItem {
   id: string;
   title: string;
@@ -48,13 +55,22 @@ export interface AuctionItem {
   year: number;
   make: string;
   model: string;
+  vin?: string;
+  drivetrain?: string;
+  engine?: string;
+  kms?: number;
   location: string;
   price?: number;
   currentBid?: number;
   saleDate?: string;
   auctionSource: string;
   imageUrl: string;
+  imageUrls?: string[];
   status: 'sold' | 'live' | 'upcoming';
+  winningBidder?: string;
+  sellerName?: string;
+  sellerStory?: string;
+  keyFeatures?: string[];
   endTime?: string;
   timeLeft?: string;
   views?: number;
@@ -91,6 +107,7 @@ export interface AuctionItem {
   comparableSales?: ComparableSale[];
   publicQA?: PublicQuestion[];
   auctionTerms?: string[];
+  comments?: Comment[];
 }
 
 export interface IntelligenceReport {

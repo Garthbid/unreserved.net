@@ -284,51 +284,102 @@ const LiveBidTicker = () => (
   </div>
 );
 
-const SidebarItem = ({ icon: Icon, label, active = false, onClick }: { icon: any, label: string, active?: boolean, onClick?: () => void }) => (
-  <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 h-9 rounded-md transition-all mb-0.5 group ${active ? 'bg-white/5 text-white shadow-lg' : 'hover:bg-white/5 text-gray-500 hover:text-white'}`}>
-    <Icon className={`w-3.5 h-3.5 ${active ? 'text-green-500' : 'text-gray-700 group-hover:text-gray-400'}`} />
-    <span className={`text-[11px] uppercase tracking-widest font-black ${active ? '' : 'italic opacity-50 group-hover:opacity-100'}`}>{label}</span>
+const SidebarItem = ({
+  icon: Icon,
+  label,
+  active = false,
+  onClick,
+}: {
+  icon: any;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}) => (
+  <button
+    onClick={onClick}
+    className={`w-full flex items-center gap-5 px-3 h-10 rounded-lg transition ${
+      active ? 'bg-white/[0.08] text-white' : 'text-white hover:bg-white/[0.04]'
+    }`}
+  >
+    <Icon size={20} strokeWidth={active ? 2.4 : 2} className="text-white shrink-0" />
+    <span className="text-sm font-normal">{label}</span>
+  </button>
+);
+
+const SidebarChannel: React.FC<{ name: string; avatar: string; onClick?: () => void }> = ({ name, avatar, onClick }) => (
+  <button
+    onClick={onClick}
+    className="w-full flex items-center gap-5 px-3 h-10 rounded-lg transition text-white hover:bg-white/[0.04]"
+  >
+    <img src={avatar} alt={name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+    <span className="text-sm font-normal truncate">{name}</span>
   </button>
 );
 
 type View = 'for-you' | 'ending-soon' | 'native-listings' | 'best-deals';
 
-const Sidebar = ({ activeView, onSelect }: { activeView: View, onSelect: (v: View) => void }) => (
-  <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-[220px] bg-black flex-col py-4 px-3 gap-0.5 shrink-0 border-r border-white/5 overflow-y-auto no-scrollbar">
-    <div className="mb-4">
-      <div className="px-3 py-1.5 text-[8px] font-black text-gray-700 uppercase tracking-[0.3em] mb-1">Navigation</div>
-      <SidebarItem icon={LayoutGrid} label="For You" active={activeView === 'for-you'} onClick={() => onSelect('for-you')} />
-      <SidebarItem icon={Clock} label="Ending Soon" active={activeView === 'ending-soon'} onClick={() => onSelect('ending-soon')} />
-      <SidebarItem icon={ShieldCheck} label="Native Listings" active={activeView === 'native-listings'} onClick={() => onSelect('native-listings')} />
-      <SidebarItem icon={Zap} label="Best Deals" active={activeView === 'best-deals'} onClick={() => onSelect('best-deals')} />
-    </div>
+const Sidebar = ({
+  activeView,
+  onSelect,
+  onChannelClick,
+}: {
+  activeView: View;
+  onSelect: (v: View) => void;
+  onChannelClick?: (id: string) => void;
+}) => (
+  <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-[240px] bg-black flex-col py-3 px-3 gap-0.5 shrink-0 overflow-y-auto no-scrollbar">
+    <SidebarItem icon={Home} label="Home" active={activeView === 'for-you'} onClick={() => onSelect('for-you')} />
+    <SidebarItem icon={Clock} label="Ending Soon" active={activeView === 'ending-soon'} onClick={() => onSelect('ending-soon')} />
+    <SidebarItem
+      icon={ShieldCheck}
+      label="Native Listings"
+      active={activeView === 'native-listings'}
+      onClick={() => onSelect('native-listings')}
+    />
+    <SidebarItem icon={Zap} label="Best Deals" active={activeView === 'best-deals'} onClick={() => onSelect('best-deals')} />
 
-    <div className="mb-4">
-      <div className="px-3 py-1.5 text-[8px] font-black text-gray-700 uppercase tracking-[0.2em] mb-1">Account</div>
-      <SidebarItem icon={PlaySquare} label="Watchlist" />
-      <SidebarItem icon={Bell} label="Alerts" />
-      <SidebarItem icon={History} label="History" />
-    </div>
+    <div className="my-3 border-t border-white/10" />
 
-    <div className="mt-auto pt-4 border-t border-white/5">
-       <SidebarItem icon={Settings} label="Config" />
-    </div>
+    <div className="px-3 pb-1 pt-2 text-base font-semibold text-white">Channels</div>
+    {CHANNELS.map((c) => (
+      <SidebarChannel key={c.id} name={c.name} avatar={c.avatar} onClick={() => onChannelClick?.(c.id)} />
+    ))}
+
+    <div className="my-3 border-t border-white/10" />
+
+    <div className="px-3 pb-1 pt-2 text-base font-semibold text-white">You</div>
+    <SidebarItem icon={PlaySquare} label="Watchlist" />
+    <SidebarItem icon={History} label="History" />
+    <SidebarItem icon={Bell} label="Alerts" />
+
+    <div className="my-3 border-t border-white/10" />
+
+    <SidebarItem icon={Settings} label="Settings" />
+    <SidebarItem icon={HelpCircle} label="Help" />
   </aside>
 );
 
-const CategoryPills = () => (
-  <div className="sticky top-0 bg-black/95 backdrop-blur-md z-40 px-3 md:px-6 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 border-b border-white/5">
-    <button className="bg-green-500 text-black px-4 py-1 rounded-md text-[9px] font-black uppercase tracking-[0.15em] italic">All Market</button>
-    {CATEGORIES.slice(1).map((cat) => (
-      <button 
-        key={cat} 
-        className="bg-white/5 hover:bg-white/10 px-4 py-1 rounded-md text-[9px] transition-all whitespace-nowrap text-gray-500 hover:text-white font-black uppercase tracking-[0.1em]"
-      >
-        {cat}
-      </button>
-    ))}
-  </div>
-);
+const CategoryPills = () => {
+  const [active, setActive] = useState(0);
+  const chips = ['All', ...CATEGORIES.slice(1)];
+  return (
+    <div className="sticky top-0 bg-black/95 backdrop-blur-md z-40 px-3 md:px-6 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+      {chips.map((cat, i) => (
+        <button
+          key={cat}
+          onClick={() => setActive(i)}
+          className={`px-3 py-1.5 rounded-lg text-sm transition whitespace-nowrap font-medium ${
+            i === active
+              ? 'bg-white text-black'
+              : 'bg-neutral-800 hover:bg-neutral-700 text-white'
+          }`}
+        >
+          {cat}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const BANNER_COPY: Record<View, { title: React.ReactNode; subtitle: string; cta: string }> = {
   'for-you': {
@@ -387,83 +438,63 @@ const HeroBanner = ({ view }: { view: View }) => {
 
 const AuctionCard: React.FC<{ item: AuctionItem; onClick?: () => void; onChannelClick?: (id: string) => void }> = ({ item, onClick, onChannelClick }) => {
   const channel = CHANNELS.find(c => c.id === item.channelId);
-  const discount = Math.round((1 - item.currentBid/item.marketValue)*100);
-  const tier = getDealTier(item.priceScore);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      onClick={onClick}
-      className="flex flex-col gap-2 group cursor-pointer"
-    >
-      <div className="relative aspect-[16/9.5] rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/5 shadow-xl transition-all duration-300 group-hover:border-white/10">
-        <img 
-          src={item.image} 
-          alt={item.title} 
-          className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110"
+    <div onClick={onClick} className="flex flex-col gap-3 group cursor-pointer">
+      <div className="relative aspect-video md:rounded-xl overflow-hidden bg-neutral-900">
+        <img
+          src={item.image}
+          alt={item.title}
+          className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
-        {/* Subtle Bottom Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-        
-        <div className="absolute top-3 left-3 scale-[0.9] origin-top-left">
-          <div className="bg-black/80 backdrop-blur-xl border border-white/10 px-2.5 py-1.5 rounded-md flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full ${tier.dotClass}`} />
-            <span className={`text-[10px] font-black uppercase tracking-tight leading-none italic ${tier.textClass}`}>
-              {tier.label}
-            </span>
-          </div>
-        </div>
-
+        <span className="absolute bottom-2 right-2 bg-black/85 text-white text-xs font-medium px-1.5 py-0.5 rounded">
+          {item.endTime}
+        </span>
       </div>
 
-      <div className="flex gap-2.5 px-0.5">
-        <div
+      <div className="flex gap-3 px-3 md:px-0.5">
+        <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); if (channel && onChannelClick) onChannelClick(channel.id); }}
-          className="relative cursor-pointer shrink-0 mt-0.5 hover:scale-105 transition-transform"
+          className="shrink-0"
         >
-          <div className="w-7 h-7 rounded-md bg-neutral-900 border border-white/5 p-0.5 overflow-hidden shadow-lg">
-            <img src={channel?.avatar} alt="" className="w-full h-full rounded-[3px] object-cover" />
+          <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-800">
+            <img src={channel?.avatar} alt="" className="w-full h-full object-cover" />
+          </div>
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <h3 className="text-[15px] font-semibold text-white leading-snug line-clamp-2">
+            {item.title}
+          </h3>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (channel && onChannelClick) onChannelClick(channel.id); }}
+            className="flex items-center gap-1 text-sm text-neutral-400 hover:text-white transition mt-1"
+          >
+            <span>{channel?.name}</span>
+            {item.isNative && (
+              <svg viewBox="0 0 24 24" width="13" height="13" className="text-neutral-500 fill-current">
+                <path d="M12 2 9.4 4.6 6 4l-.6 3.4L2 9l1.6 3L2 15l3.4 1.6L6 20l3.4-.6L12 22l2.6-2.6L18 20l.6-3.4L22 15l-1.6-3L22 9l-3.4-1.6L18 4l-3.4.6Zm-1 14-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9Z" />
+              </svg>
+            )}
+          </button>
+          <div className="text-sm text-neutral-400 leading-tight">
+            ${item.currentBid.toLocaleString()} · {item.location}
           </div>
         </div>
 
-        <div className="flex flex-col flex-1 min-w-0">
-          <div className="flex flex-col gap-1 mb-3">
-            <h3 className="font-black text-[12px] text-white leading-none tracking-tight uppercase group-hover:text-green-500 transition-colors truncate italic">
-              {item.title}
-            </h3>
-
-            <div className="flex items-center">
-              <span
-                onClick={(e) => { e.stopPropagation(); if (channel && onChannelClick) onChannelClick(channel.id); }}
-                className="text-[9px] font-black text-gray-500 uppercase tracking-widest italic hover:text-white transition-colors cursor-pointer leading-none"
-              >
-                {channel?.name} <span className="opacity-30 mx-1 text-white text-[8px]">·</span> {item.location}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-end justify-between pt-1.5 border-t border-white/5">
-            <div className="flex flex-col">
-               <span className="text-[7px] font-black text-gray-700 uppercase tracking-[0.2em] mb-0.5 italic leading-none">Current Bid</span>
-               <div className="flex items-baseline gap-2">
-                  <span className="text-lg font-black text-white italic tracking-tighter leading-none">${item.currentBid.toLocaleString()}</span>
-                  <span className="text-[9px] font-black text-green-600 leading-none">-{discount}% MARKET</span>
-               </div>
-            </div>
-            <div className="flex flex-col items-end">
-               <span className="text-[7px] font-black text-gray-700 uppercase tracking-[0.2em] mb-1 italic leading-none">Time Left</span>
-               <div className="flex items-center gap-1.5">
-                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse" />
-                 <span className="text-[11px] font-black uppercase tracking-tight leading-none italic text-red-400">{item.endTime}</span>
-               </div>
-            </div>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className="shrink-0 w-8 h-8 -mr-1 flex items-center justify-center text-neutral-400 hover:text-white rounded-full hover:bg-white/5 transition"
+          aria-label="More"
+        >
+          <MoreVertical size={18} />
+        </button>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
@@ -507,30 +538,24 @@ export default function App() {
       <Navbar onOpenSubmit={() => setSubmitOpen(true)} />
 
       <div className="flex flex-1 pt-14 pb-14 md:pb-0">
-        <Sidebar activeView={activeView} onSelect={handleSelectView} />
+        <Sidebar activeView={activeView} onSelect={handleSelectView} onChannelClick={handleSelectChannel} />
 
-        <main className="flex-1 md:ml-[220px] overflow-y-auto min-h-screen no-scrollbar bg-[#050505]">
+        <main className="flex-1 md:ml-[240px] overflow-y-auto min-h-screen no-scrollbar bg-[#050505]">
           {selectedChannel ? (
             <AuctioneerProfile channel={selectedChannel} onBack={() => setSelectedChannelId(null)} />
           ) : detailItem ? (
             <ItemDetailPage item={detailItem} onBack={() => setSelectedItemId(null)} />
           ) : (
             <>
-              <LiveBidTicker />
               <CategoryPills />
 
-              <div className="py-4 md:py-6">
-                <HeroBanner view={activeView} />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8 md:gap-y-12 px-3 md:px-6 pb-12 md:pb-20">
-                  {AUCTION_ITEMS.map((item) => (
-                    <AuctionCard key={item.id} item={item} onClick={() => handleSelectItem(item.id)} onChannelClick={handleSelectChannel} />
-                  ))}
-                  {/* Duplication for density test */}
-                  {AUCTION_ITEMS.map((item) => (
-                    <AuctionCard key={`${item.id}-dup`} item={item} onClick={() => handleSelectItem(item.id)} onChannelClick={handleSelectChannel} />
-                  ))}
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6 md:gap-y-8 px-0 md:px-6 pt-1 pb-12 md:pt-3 md:pb-20">
+                {AUCTION_ITEMS.map((item) => (
+                  <AuctionCard key={item.id} item={item} onClick={() => handleSelectItem(item.id)} onChannelClick={handleSelectChannel} />
+                ))}
+                {AUCTION_ITEMS.map((item) => (
+                  <AuctionCard key={`${item.id}-dup`} item={item} onClick={() => handleSelectItem(item.id)} onChannelClick={handleSelectChannel} />
+                ))}
               </div>
             </>
           )}

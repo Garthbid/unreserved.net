@@ -18,7 +18,7 @@ export const CHANNELS: AuctionChannel[] = [
   {
     id: 'c1',
     name: 'Garthbid',
-    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=GB&backgroundColor=111111',
+    avatar: 'https://i.pravatar.cc/120?u=garthbid',
     followers: '12.4k',
     trustScore: 4.8,
     sellThroughRate: '94%',
@@ -27,7 +27,7 @@ export const CHANNELS: AuctionChannel[] = [
   {
     id: 'c2',
     name: 'Classic Garage',
-    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=CG&backgroundColor=111111',
+    avatar: 'https://i.pravatar.cc/120?u=classic-garage',
     followers: '45k',
     trustScore: 4.9,
     sellThroughRate: '88%',
@@ -36,7 +36,7 @@ export const CHANNELS: AuctionChannel[] = [
   {
     id: 'c3',
     name: 'Vanguard Equipment',
-    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=VE&backgroundColor=111111',
+    avatar: 'https://i.pravatar.cc/120?u=vanguard-equipment',
     followers: '8.2k',
     trustScore: 4.7,
     sellThroughRate: '91%',
@@ -45,7 +45,7 @@ export const CHANNELS: AuctionChannel[] = [
   {
     id: 'c4',
     name: 'Farm Sale Network',
-    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=FS&backgroundColor=111111',
+    avatar: 'https://i.pravatar.cc/120?u=farm-sale-network',
     followers: '21k',
     trustScore: 4.6,
     sellThroughRate: '96%',

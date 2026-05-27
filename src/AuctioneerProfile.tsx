@@ -166,102 +166,99 @@ const Stars = ({ rating, size = 12 }: { rating: number; size?: number }) => (
   </div>
 );
 
-const LiveAuctionCard: React.FC<{ item: AuctionItem }> = ({ item }) => {
-  const discount = Math.round((1 - item.currentBid / item.marketValue) * 100);
-
+const LiveAuctionCard: React.FC<{ item: AuctionItem; fixedWidth?: boolean }> = ({ item, fixedWidth = false }) => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      className="flex flex-col gap-2 group cursor-pointer w-[280px] md:w-[320px] shrink-0"
-    >
-      <div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/5 shadow-xl transition-all duration-300 group-hover:border-white/10">
+    <div className={`flex flex-col gap-3 group cursor-pointer ${fixedWidth ? 'w-[280px] md:w-[320px] shrink-0' : ''}`}>
+      <div className="relative aspect-video rounded-xl overflow-hidden bg-neutral-900">
         <img
           src={item.image}
           alt={item.title}
-          className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110"
+          className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-red-600 px-2 py-1 rounded-md">
+        <span className="absolute top-2 left-2 inline-flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
           <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-          <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white italic">Live</span>
-        </div>
-
-        <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-xl border border-white/10 px-2 py-1 rounded-md flex items-center gap-1.5">
-          <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[10px] font-black italic tracking-tight text-red-400">{item.endTime}</span>
-        </div>
+          Live
+        </span>
+        <span className="absolute bottom-2 right-2 bg-black/85 text-white text-xs font-medium px-1.5 py-0.5 rounded">
+          {item.endTime}
+        </span>
       </div>
 
-      <div className="flex flex-col gap-1 px-0.5">
-        <h3 className="font-black text-[13px] text-white leading-tight tracking-tight uppercase italic line-clamp-2 group-hover:text-green-500 transition-colors">
+      <div className="flex flex-col gap-0.5 px-0.5">
+        <h3 className="text-[15px] font-semibold text-white leading-snug line-clamp-2">
           {item.title}
         </h3>
-        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-gray-500 italic">
-          <span>{item.location}</span>
-          <span className="opacity-30">·</span>
-          <span>{item.bids} bids</span>
-        </div>
-        <div className="flex items-baseline gap-2 mt-1">
-          <span className="text-base font-black text-white italic tracking-tighter">${item.currentBid.toLocaleString()}</span>
-          <span className="text-[9px] font-black text-green-600">-{discount}% MARKET</span>
+        <div className="text-sm text-neutral-400 leading-tight">
+          ${item.currentBid.toLocaleString()} · {item.location} · {item.bids} bids
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
-const PreviousSaleCard: React.FC<{ sale: PreviousSale }> = ({ sale }) => {
-  const savings = sale.marketValue - sale.hammerPrice;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      className="flex flex-col gap-2 group cursor-pointer"
+const RowAuctionCard: React.FC<{ item: AuctionItem }> = ({ item }) => (
+  <div className="flex gap-3 group cursor-pointer">
+    <div className="relative w-40 md:w-48 aspect-video rounded-lg overflow-hidden bg-neutral-900 shrink-0">
+      <img
+        src={item.image}
+        alt={item.title}
+        className="w-full h-full object-cover"
+        referrerPolicy="no-referrer"
+      />
+      <span className="absolute bottom-1.5 right-1.5 bg-black/85 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">
+        {item.endTime}
+      </span>
+    </div>
+    <div className="flex-1 min-w-0">
+      <h3 className="text-sm md:text-base font-semibold text-white leading-snug line-clamp-2">
+        {item.title}
+      </h3>
+      <div className="text-xs md:text-sm text-neutral-400 mt-1 leading-tight">
+        ${item.currentBid.toLocaleString()} · {item.bids} bids
+      </div>
+      <div className="text-xs md:text-sm text-neutral-400 leading-tight">
+        {item.location}
+      </div>
+    </div>
+    <button
+      type="button"
+      onClick={(e) => e.stopPropagation()}
+      className="shrink-0 w-7 h-7 -mr-1 flex items-start justify-center text-neutral-400 hover:text-white"
+      aria-label="More"
     >
-      <div className="relative aspect-[16/9.5] rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/5 shadow-xl">
+      ⋮
+    </button>
+  </div>
+);
+
+const PreviousSaleCard: React.FC<{ sale: PreviousSale }> = ({ sale }) => {
+  return (
+    <div className="flex flex-col gap-3 group cursor-pointer">
+      <div className="relative aspect-video rounded-xl overflow-hidden bg-neutral-900">
         <img
           src={sale.image}
           alt={sale.title}
-          className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110 grayscale-[0.1]"
+          className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-
-        <div className="absolute top-2.5 left-2.5 bg-black/80 backdrop-blur-xl border border-white/10 px-2.5 py-1 rounded-md flex items-center gap-1.5">
-          <FileCheck2 size={10} className="text-green-400" />
-          <span className="text-[10px] font-black uppercase tracking-tight text-green-400 italic">Sold</span>
-        </div>
-
-        <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-end justify-between">
-          <div className="bg-black/80 backdrop-blur-xl border border-white/10 px-2 py-1 rounded-md">
-            <span className="text-[8px] font-black uppercase tracking-[0.15em] text-gray-500 italic">Hammer</span>
-            <div className="text-[14px] font-black text-white italic tracking-tighter leading-none">${sale.hammerPrice.toLocaleString()}</div>
-          </div>
-        </div>
+        <span className="absolute top-2 left-2 inline-flex items-center gap-1 bg-emerald-500 text-black text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+          Sold
+        </span>
+        <span className="absolute bottom-2 right-2 bg-black/85 text-white text-xs font-medium px-1.5 py-0.5 rounded">
+          ${sale.hammerPrice.toLocaleString()}
+        </span>
       </div>
 
-      <div className="flex flex-col gap-1 px-0.5">
-        <h3 className="font-black text-[13px] text-white leading-tight tracking-tight uppercase italic line-clamp-1 group-hover:text-green-500 transition-colors">
+      <div className="flex flex-col gap-0.5 px-0.5">
+        <h3 className="text-[15px] font-semibold text-white leading-snug line-clamp-2">
           {sale.title}
         </h3>
-        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-gray-500 italic">
-          <span>{sale.soldDate}</span>
-          <span className="opacity-30">·</span>
-          <span>{sale.bidCount} bids</span>
-          <span className="opacity-30">·</span>
-          <span>{sale.buyerLocation}</span>
-        </div>
-        <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-white/5">
-          <span className="text-[9px] font-black text-gray-700 uppercase tracking-[0.15em] italic">Market ${sale.marketValue.toLocaleString()}</span>
-          <span className="text-[10px] font-black text-green-500 italic">Saved ${savings.toLocaleString()}</span>
+        <div className="text-sm text-neutral-400 leading-tight">
+          {sale.buyerLocation} · {sale.bidCount} bids · {sale.soldDate}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
@@ -325,99 +322,80 @@ export const AuctioneerProfile = ({ channel, onBack }: { channel: AuctionChannel
   return (
     <div className="bg-black min-h-screen">
       {/* Banner */}
-      <div className="px-3 md:px-6 pt-3 md:pt-6">
-        <div className="relative h-32 md:h-48 lg:h-56 rounded-2xl overflow-hidden bg-neutral-900 border border-white/5">
+      <div className="md:px-6 md:pt-4">
+        <div className="relative aspect-[16/5] md:rounded-2xl overflow-hidden bg-neutral-900">
+          <button
+            onClick={onBack}
+            className="absolute top-3 left-3 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md hover:bg-black/80 flex items-center justify-center text-white transition z-10"
+            aria-label="Back"
+          >
+            ←
+          </button>
           <img
             src="/auction-pics/d531d62f-4871-4f28-b4ea-73f680221eb8.jpeg"
             alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-70"
+            className="absolute inset-0 w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-          <button
-            onClick={onBack}
-            className="absolute top-3 left-3 bg-black/70 hover:bg-black border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white italic transition-colors"
-          >
-            ← Back
-          </button>
         </div>
       </div>
 
       {/* Profile header */}
-      <div className="px-3 md:px-6 pt-6 md:pt-8">
-        <div className="flex flex-col md:flex-row gap-5 md:gap-8 md:items-end">
+      <div className="px-4 md:px-6 pt-5 md:pt-6">
+        <div className="flex items-start gap-4 md:gap-5">
           {/* Avatar */}
-          <div className="relative shrink-0 -mt-12 md:-mt-20 md:ml-4">
-            <div className="w-24 h-24 md:w-36 md:h-36 rounded-full overflow-hidden ring-4 ring-black bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center shadow-2xl">
-              <span className="text-3xl md:text-5xl font-black text-black tracking-tighter italic">{channel.name.charAt(0)}</span>
-            </div>
-            <div className="absolute bottom-1 right-1 w-7 h-7 md:w-9 md:h-9 bg-green-500 rounded-full ring-4 ring-black flex items-center justify-center">
-              <BadgeCheck size={14} className="text-black" strokeWidth={3} />
-            </div>
-          </div>
+          <img
+            src={channel.avatar}
+            alt={channel.name}
+            className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover shrink-0 bg-neutral-800"
+          />
 
           {/* Identity */}
-          <div className="flex-1 min-w-0 flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight uppercase italic">{channel.name}</h1>
-              <BadgeCheck size={20} className="text-green-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h1 className="text-xl md:text-3xl font-bold text-white tracking-tight">{channel.name}</h1>
+              <BadgeCheck size={18} className="text-neutral-400 shrink-0" />
             </div>
-
-            <div className="flex items-center gap-2 flex-wrap text-[10px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest italic">
-              <span>@{channel.name.toLowerCase().replace(/\s+/g, '')}</span>
-              <span className="opacity-30">·</span>
-              <span>{channel.followers} followers</span>
-              <span className="opacity-30">·</span>
-              <span>{PREVIOUS_SALES.length + liveItems.length} auctions</span>
-              <span className="opacity-30">·</span>
-              <span className="text-green-400">{channel.sellThroughRate} sell-through</span>
+            <div className="text-sm text-neutral-400 mt-1">
+              @{channel.name.toLowerCase().replace(/\s+/g, '')}
             </div>
-
-            <p className="text-[12px] md:text-sm text-gray-400 font-medium max-w-2xl">
-              Unreserved specialists in {channel.specialty.toLowerCase()}. Independent third-party inspections, transparent reports, no reserve, no buyer fees. <span className="text-white hover:underline cursor-pointer">...more</span>
-            </p>
-
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <button
-                onClick={() => setFollowing(!following)}
-                className={`px-5 h-9 rounded-full font-black text-[11px] uppercase tracking-widest italic transition-all ${
-                  following
-                    ? 'bg-white/[0.08] hover:bg-white/[0.14] text-white border border-white/10'
-                    : 'bg-white text-black hover:bg-white/90 shadow-[0_0_24px_rgba(255,255,255,0.15)]'
-                }`}
-              >
-                {following ? '✓ Following' : 'Follow'}
-              </button>
-              <button className="px-5 h-9 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-white font-black text-[11px] uppercase tracking-widest italic transition-all">
-                Message
-              </button>
-              <button className="w-9 h-9 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-white flex items-center justify-center transition-all">
-                <Bell size={14} />
-              </button>
+            <div className="text-sm text-neutral-400 mt-0.5">
+              {channel.followers} followers · {PREVIOUS_SALES.length + liveItems.length} auctions
             </div>
           </div>
         </div>
+
+        <p className="text-sm text-neutral-300 leading-snug mt-4 line-clamp-2 md:line-clamp-none md:max-w-2xl">
+          Unreserved specialists in {channel.specialty.toLowerCase()}. Independent third-party inspections, transparent reports, no reserve, no buyer fees. <span className="text-white font-semibold hover:underline cursor-pointer">...more</span>
+        </p>
+
+        <button
+          onClick={() => setFollowing(!following)}
+          className={`mt-4 w-full md:w-auto h-10 px-6 rounded-full font-semibold text-sm transition ${
+            following
+              ? 'bg-neutral-800 hover:bg-neutral-700 text-white'
+              : 'bg-white hover:bg-white/90 text-black'
+          }`}
+        >
+          {following ? 'Following' : 'Subscribe'}
+        </button>
       </div>
 
       {/* Tabs */}
-      <div className="sticky top-0 z-30 bg-black/95 backdrop-blur-md border-b border-white/10 mt-6 md:mt-8">
-        <div className="px-3 md:px-6 flex items-center gap-1 overflow-x-auto no-scrollbar">
+      <div className="sticky top-0 z-30 bg-black border-b border-white/10 mt-5 md:mt-6">
+        <div className="px-4 md:px-6 flex items-center gap-6 overflow-x-auto no-scrollbar">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`relative h-12 px-4 text-[11px] font-black uppercase tracking-widest italic whitespace-nowrap transition-colors ${
-                tab === t.key ? 'text-white' : 'text-gray-500 hover:text-white'
+              className={`relative h-12 text-sm whitespace-nowrap transition ${
+                tab === t.key ? 'text-white font-bold' : 'text-neutral-400 hover:text-white font-medium'
               }`}
             >
               {t.label}
-              {tab === t.key && <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-white rounded-full" />}
+              {tab === t.key && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white" />}
             </button>
           ))}
-          <button className="ml-auto w-9 h-9 rounded-full hover:bg-white/[0.06] flex items-center justify-center text-gray-500 hover:text-white transition-colors">
-            <Search size={14} />
-          </button>
         </div>
       </div>
 
@@ -432,34 +410,12 @@ export const AuctioneerProfile = ({ channel, onBack }: { channel: AuctionChannel
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.2 }}
             >
-              {/* Featured live row */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <h2 className="text-xl md:text-2xl font-black text-white tracking-tight italic uppercase">For You</h2>
-                </div>
-                <button className="text-[10px] font-black text-gray-500 hover:text-white uppercase tracking-widest italic">View All →</button>
-              </div>
-
-              <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 -mx-3 md:-mx-6 px-3 md:px-6">
+              <div className="flex flex-col gap-4">
                 {allLiveSpread.map((item) => (
-                  <LiveAuctionCard key={item.id} item={item} />
+                  <RowAuctionCard key={`row-${item.id}`} item={item} />
                 ))}
               </div>
 
-              {/* Live grid */}
-              <div className="mt-10">
-                <div className="flex items-center gap-2 mb-4">
-                  <Zap size={16} className="text-green-500" />
-                  <h2 className="text-base md:text-lg font-black text-white tracking-tight italic uppercase">All Live Auctions</h2>
-                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest italic">({allLiveSpread.length})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-8">
-                  {allLiveSpread.map((item) => (
-                    <LiveAuctionCard key={`grid-${item.id}`} item={item} />
-                  ))}
-                </div>
-              </div>
             </motion.div>
           )}
 

@@ -20,6 +20,16 @@ import {
   Eye,
   Plus,
   ExternalLink,
+  Play,
+  Crown,
+  BadgeCheck,
+  MessageCircle,
+  Phone,
+  Sparkles,
+  ChevronDown,
+  Heart,
+  Send,
+  MessageSquare,
 } from 'lucide-react';
 import { AuctionItem } from './types';
 import { cn, formatCurrency } from './lib/utils';
@@ -286,492 +296,563 @@ export const ItemDetailPage = ({
   const locationCity = locationParts[0] || '';
   const locationRegion = locationParts[1] || '';
 
-  return (
-    <div className="container mx-auto px-4 py-8 pb-32 md:pb-8 max-w-7xl">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors group"
-      >
-        <ArrowRight size={18} className="rotate-180 group-hover:-translate-x-1 transition-transform" />
-        <span className="text-xs font-bold uppercase tracking-widest">Back to Live Auctions</span>
-      </button>
+  const galleryImages = item.imageUrls && item.imageUrls.length > 0 ? item.imageUrls : [item.imageUrl];
+  const [selectedImage, setSelectedImage] = useState(0);
+  const hasCinematic = !!(item.cinematicVideoUrl || item.cinematicPosterUrl || item.editorialBadge === 'Cinematic Feature');
+  const scrollToCinematic = () => {
+    document.getElementById('cinematic-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+  const toggleSection = (key: string) =>
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  const [countdown, setCountdown] = useState(item.timeLeft ?? '');
+  useEffect(() => {
+    if (!item.endTime) return;
+    const fmt = () => {
+      const ms = new Date(item.endTime!).getTime() - Date.now();
+      if (ms <= 0) return 'Ended';
+      const d = Math.floor(ms / 86400000);
+      const h = Math.floor((ms / 3600000) % 24);
+      const m = Math.floor((ms / 60000) % 60);
+      const s = Math.floor((ms / 1000) % 60);
+      if (d > 0) return `${d}d ${h}h ${m}m`;
+      if (h > 0) return `${h}h ${m}m ${s}s`;
+      return `${m}m ${s}s`;
+    };
+    const tick = () => setCountdown(fmt());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [item.endTime]);
+
+  return (
+    <div className="container mx-auto px-4 pt-0 md:pt-3 pb-32 md:pb-8 max-w-7xl">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
-        <div className="lg:col-span-7 space-y-6 md:space-y-8">
-          <div className="aspect-video rounded-2xl md:rounded-3xl overflow-hidden border border-white/5 relative group">
+        <div className="lg:col-span-7 space-y-4 md:space-y-6">
+          <div className="-mx-4 md:mx-0 aspect-[4/3] md:aspect-video md:rounded-3xl overflow-hidden md:border md:border-white/5 relative group">
             <img
-              src={item.imageUrl}
+              src={galleryImages[selectedImage]}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
               alt={item.title}
             />
-            <div className="absolute top-4 md:top-6 left-4 md:left-6 flex flex-wrap gap-2 md:gap-3">
-              {item.status === 'live' ? (
-                <Badge
-                  variant="accent"
-                  className="bg-red-500 text-white border-none font-black px-3 md:px-4 py-1 md:py-1.5 animate-pulse text-[9px] md:text-[10px]"
-                >
-                  LIVE AUCTION
-                </Badge>
-              ) : (
-                <Badge
-                  variant="secondary"
-                  className="font-black px-3 md:px-4 py-1 md:py-1.5 text-[9px] md:text-[10px]"
-                >
-                  SOLD RESULT
-                </Badge>
-              )}
-              {item.isNative && (
-                <Badge
-                  variant="accent"
-                  className="bg-accent text-black border-none font-black px-3 md:px-4 py-1 md:py-1.5 text-[9px] md:text-[10px]"
-                >
-                  UNRESERVED DIRECT
-                </Badge>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={onBack}
+              className="absolute top-3 md:top-4 left-3 md:left-4 flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-white text-xs md:text-sm font-bold hover:bg-black/85 transition"
+            >
+              <ArrowRight size={14} className="rotate-180" />
+              <span>Go Back</span>
+            </button>
+            {hasCinematic && (
+              <button
+                type="button"
+                onClick={scrollToCinematic}
+                aria-label="Play cinematic walkaround"
+                className="absolute inset-0 flex items-center justify-center"
+              >
+                <span className="relative">
+                  <span className="absolute -inset-3 rounded-2xl bg-accent/25 blur-2xl" />
+                  <span className="relative w-20 h-14 md:w-24 md:h-16 rounded-2xl bg-gradient-to-br from-zinc-900 via-black to-zinc-950 border-2 border-accent flex items-center justify-center shadow-[0_0_28px_rgba(29,208,88,0.6),inset_0_0_12px_rgba(29,208,88,0.2)] group-hover:scale-110 transition-transform duration-300">
+                    <Play className="w-7 h-7 md:w-8 md:h-8 text-accent fill-accent ml-0.5 drop-shadow-[0_0_10px_rgba(29,208,88,0.9)]" />
+                  </span>
+                </span>
+              </button>
+            )}
+            {item.views != null && (
+              <div className="absolute bottom-3 md:bottom-4 right-3 md:right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-white text-xs font-bold">
+                <Eye size={12} />
+                <span>{item.views.toLocaleString()} views</span>
+              </div>
+            )}
           </div>
 
-          <section className="space-y-6 md:space-y-8">
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 md:gap-6">
-              <div className="space-y-2 md:space-y-3">
-                <div className="flex items-center gap-2 md:gap-3 text-muted-foreground flex-wrap">
-                  {item.editorialBadge && <EditorialBadgePill badge={item.editorialBadge} />}
-                  <Badge variant="outline" className="font-bold text-[9px] md:text-[10px]">
-                    {item.category}
-                  </Badge>
-                  <span className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-white/10" />
-                  <div className="flex items-center gap-1 md:gap-1.5 text-[9px] md:text-xs font-bold uppercase tracking-widest">
-                    <MapPin size={12} className="text-accent md:w-3.5 md:h-3.5" /> {item.location}
-                  </div>
+          {galleryImages.length > 1 && (
+            <div className="flex gap-2 md:gap-3 overflow-x-auto no-scrollbar -mt-2 md:-mt-4 pb-1">
+              {galleryImages.map((src, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSelectedImage(i)}
+                  aria-label={`Show image ${i + 1}`}
+                  className={cn(
+                    'shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border-2 transition-all',
+                    selectedImage === i
+                      ? 'border-accent shadow-[0_0_0_2px_rgba(29,208,88,0.25)]'
+                      : 'border-white/10 opacity-60 hover:opacity-100 hover:border-white/30'
+                  )}
+                >
+                  <img src={src} alt={`${item.title} ${i + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          <section className="space-y-4 md:space-y-6">
+            <div className="space-y-2 md:space-y-3">
+              <h1 className="text-lg md:text-3xl font-black tracking-tight leading-tight truncate">
+                {item.title}
+              </h1>
+              <div className="flex items-center gap-2 md:gap-3 flex-wrap text-[11px] md:text-sm font-bold">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <MapPin size={13} className="text-accent" />
+                  <span>{item.location}</span>
                 </div>
-                <h1 className="text-3xl md:text-5xl font-black tracking-tighter leading-none">{item.title}</h1>
-              </div>
-              <div className="bg-secondary/20 p-5 md:p-6 rounded-2xl md:rounded-3xl border border-white/5 min-w-full md:min-w-[240px]">
-                <div className="text-[9px] md:text-[10px] text-muted-foreground uppercase font-black tracking-[0.2em] mb-1 md:mb-2 text-center md:text-left">
-                  {item.status === 'live' ? 'Current High Bid' : 'Final Sale Price'}
-                </div>
-                <div className="text-4xl md:text-5xl font-black text-accent tracking-tighter leading-none mb-3 md:mb-4 text-center md:text-left">
-                  {formatCurrency(item.status === 'live' ? item.currentBid! : item.price!)}
-                </div>
-                {item.status === 'live' && (
-                  <div className="flex items-center justify-center md:justify-start gap-2 text-red-500 font-bold text-xs md:text-sm">
-                    <Timer size={16} className="md:w-[18px] md:h-[18px]" />
-                    <span>Ends in {item.timeLeft}</span>
-                  </div>
+                {item.sellerName && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/15" />
+                    <div className="flex items-center gap-1.5 text-foreground">
+                      <span>{item.sellerName}</span>
+                      <BadgeCheck size={14} className="text-accent fill-accent/20" />
+                    </div>
+                  </>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {[
-                { label: 'Year', value: item.year },
-                { label: 'Make', value: item.make },
-                { label: 'Model', value: item.model },
-              ].map((spec, i) => (
-                <div key={i} className="space-y-0.5 md:space-y-1">
-                  <div className="text-[9px] md:text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-                    {spec.label}
-                  </div>
-                  <div className="text-base md:text-lg font-bold">{spec.value}</div>
-                </div>
-              ))}
-            </div>
-
-            {item.whyWatching && (
-              <div className="relative pt-6 md:pt-8 border-t border-white/5">
-                <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-accent/[0.05] via-background to-background p-5 md:p-6 space-y-3 md:space-y-4 relative overflow-hidden">
-                  <div className="absolute left-0 top-6 bottom-6 w-[3px] bg-accent rounded-full shadow-[0_0_12px_rgba(29,208,88,0.6)]" />
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.22em] text-accent">
-                      Editorial Note
-                    </span>
-                  </div>
-                  <h3 className="text-lg md:text-2xl font-black tracking-tight">Why It Made the Front Page</h3>
-                  <p className="text-muted-foreground leading-relaxed text-sm md:text-base font-medium">
-                    {item.whyWatching}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {item.whatToKnow && item.whatToKnow.length > 0 && (
-              <div className="space-y-3 md:space-y-4 pt-6 md:pt-8 border-t border-white/5">
-                <h3 className="text-lg md:text-2xl font-black tracking-tight">What To Know</h3>
-                <ul className="space-y-2 md:space-y-3">
-                  {item.whatToKnow.map((point, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-3 text-sm md:text-base text-foreground/90 leading-relaxed"
-                    >
-                      <CheckCircle2 size={16} className="text-accent mt-1 shrink-0" />
-                      <span>{point}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {item.knownIssues && (
-              <div className="space-y-3 md:space-y-4 pt-6 md:pt-8 border-t border-white/5">
-                <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-                  <AlertTriangle size={14} className="text-amber-400" />
-                  <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.22em] text-amber-400">
-                    Buyer Caution
-                  </span>
-                  {item.cautionFlags?.map(flag => (
-                    <span
-                      key={flag}
-                      className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] md:text-[10px] font-black uppercase tracking-[0.18em] bg-amber-500/15 text-amber-300 border border-amber-500/30"
-                    >
-                      {flag}
-                    </span>
-                  ))}
-                </div>
-                <h3 className="text-lg md:text-2xl font-black tracking-tight">Known Issues / Buyer Caution</h3>
-                <div className="p-4 md:p-5 rounded-xl md:rounded-2xl bg-amber-500/[0.04] border border-amber-500/20">
-                  <p className="text-muted-foreground leading-relaxed text-sm md:text-base">{item.knownIssues}</p>
-                </div>
-              </div>
-            )}
-
-            {(item.cinematicVideoUrl || item.cinematicPosterUrl || item.editorialBadge === 'Cinematic Feature') && (
-              <div className="space-y-3 md:space-y-4 pt-6 md:pt-8 border-t border-white/5">
-                <div className="flex items-center gap-2 md:gap-3">
-                  <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.22em] text-fuchsia-300">
-                    Cinematic Film
-                  </span>
-                </div>
-                <h3 className="text-lg md:text-2xl font-black tracking-tight">Walkaround &amp; Feature Video</h3>
-                <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 bg-black group cursor-pointer">
-                  <img
-                    src={item.cinematicPosterUrl || item.imageUrl}
-                    alt={`${item.title} cinematic poster`}
-                    className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/95 text-black flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
+            {(item.endTime || item.winningBidder) && (
+              <div className="rounded-xl border border-white/[0.08] bg-secondary/[0.05] divide-x divide-white/[0.06] grid grid-cols-2">
+                {item.endTime && (
+                  <div className="flex items-center gap-3 px-4 md:px-5 py-3 md:py-3.5">
+                    <Timer size={16} className="text-red-400 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+                        Ends In
+                      </div>
+                      <div className="text-sm md:text-base font-black text-red-400 tabular-nums truncate">
+                        {countdown}
+                      </div>
                     </div>
                   </div>
-                  {item.cinematicTagline && (
-                    <div className="absolute bottom-4 left-4 right-4 text-white/85 text-xs md:text-sm italic leading-snug">
-                      "{item.cinematicTagline}"
+                )}
+                {item.winningBidder && (
+                  <div className="flex items-center gap-3 px-4 md:px-5 py-3 md:py-3.5">
+                    <Crown size={16} className="text-accent shrink-0" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+                          {item.status === 'live' ? 'Leader' : 'Winner'}
+                        </span>
+                        {item.status === 'live' && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-red-500/15 text-red-400 text-[8px] md:text-[9px] font-black uppercase tracking-wider">
+                            <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                            Live
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm md:text-base font-black truncate">
+                        <span className="text-muted-foreground/60">@</span>
+                        {item.winningBidder}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {item.sellerName && (
+              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-secondary/[0.12] via-zinc-950 to-black p-4 md:p-5 space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="relative shrink-0">
+                    <span className="absolute -inset-1 rounded-full bg-accent/30 blur-md" />
+                    <img
+                      src={`https://i.pravatar.cc/120?u=${encodeURIComponent(item.sellerName)}`}
+                      alt={item.sellerName}
+                      className="relative w-11 h-11 md:w-12 md:h-12 rounded-full object-cover border border-accent/40"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-black text-sm md:text-base truncate">{item.sellerName}</span>
+                      <BadgeCheck size={14} className="text-accent fill-accent/20 shrink-0" />
+                    </div>
+                    <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                      Trusted Seller
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 md:gap-3">
+                  <button
+                    onClick={onList}
+                    className="h-11 md:h-12 rounded-xl bg-accent hover:bg-accent/90 text-black font-black text-xs md:text-sm uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-[0_0_20px_rgba(29,208,88,0.2)]"
+                  >
+                    <MessageCircle size={15} /> Message
+                  </button>
+                  <button
+                    onClick={onList}
+                    className="h-11 md:h-12 rounded-xl bg-transparent border border-white/15 hover:border-accent/50 hover:bg-accent/[0.04] text-foreground font-black text-xs md:text-sm uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition"
+                  >
+                    <Phone size={15} /> Call
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3 md:space-y-3 pt-6 md:pt-8 border-t border-white/5">
+              {/* Item Details */}
+              <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('details')}
+                  className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <Info size={16} className="text-accent" />
+                    <h3 className="text-base font-black tracking-tight">Item Details</h3>
+                  </div>
+                  <ChevronDown
+                    size={18}
+                    className={cn(
+                      'text-muted-foreground transition-transform duration-200',
+                      openSections.has('details') && 'rotate-180',
+                    )}
+                  />
+                </button>
+                {openSections.has('details') && (
+                  <div className="px-5 pb-5 pt-1">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                      {[
+                        { label: 'Year', value: item.year },
+                        { label: 'Make', value: item.make },
+                        { label: 'Model', value: item.model },
+                        { label: 'VIN', value: item.vin },
+                        { label: 'Drivetrain', value: item.drivetrain },
+                        { label: 'Engine', value: item.engine },
+                        { label: 'Kms', value: item.kms != null ? item.kms.toLocaleString() : undefined },
+                      ]
+                        .filter((spec) => spec.value !== undefined && spec.value !== null && spec.value !== '')
+                        .map((spec, i) => (
+                          <div key={i} className="space-y-0.5 md:space-y-1">
+                            <div className="text-[9px] md:text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
+                              {spec.label}
+                            </div>
+                            <div className="text-base md:text-lg font-bold">{spec.value}</div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Seller Story */}
+              {item.sellerStory && (
+                <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('story')}
+                    className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText size={16} className="text-accent" />
+                      <h3 className="text-base font-black tracking-tight">Seller Story</h3>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {item.sellerName && (
+                        <span className="hidden sm:inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          By {item.sellerName}
+                        </span>
+                      )}
+                      <ChevronDown
+                        size={18}
+                        className={cn(
+                          'text-muted-foreground transition-transform duration-200',
+                          openSections.has('story') && 'rotate-180',
+                        )}
+                      />
+                    </div>
+                  </button>
+                  {openSections.has('story') && (
+                    <div className="px-5 pb-5 pt-1">
+                      <p className="text-sm md:text-[15px] text-foreground/85 leading-relaxed whitespace-pre-line">
+                        {item.sellerStory}
+                      </p>
                     </div>
                   )}
                 </div>
-                <p className="text-[11px] md:text-xs text-muted-foreground leading-relaxed">
-                  Cinematic walkaround on file. Premium native listings receive movie-style treatment alongside the
-                  auction page.
-                </p>
-              </div>
-            )}
+              )}
 
-            {item.comparableSales && item.comparableSales.length > 0 && (
-              <div className="space-y-3 md:space-y-4 pt-6 md:pt-8 border-t border-white/5">
-                <div className="flex items-center gap-2 md:gap-3">
-                  <History size={14} className="text-accent" />
-                  <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.22em] text-accent">
-                    Comparable Sales
-                  </span>
-                </div>
-                <h3 className="text-lg md:text-2xl font-black tracking-tight">Recent Comparable Sales</h3>
-                <div className="rounded-2xl border border-white/5 overflow-hidden divide-y divide-white/5">
-                  {item.comparableSales.map((c, i) => (
-                    <div
-                      key={i}
-                      className="grid grid-cols-12 gap-2 md:gap-4 px-4 md:px-5 py-3 md:py-3.5 items-center bg-secondary/[0.06] hover:bg-secondary/[0.12] transition-colors"
-                    >
-                      <div className="col-span-12 md:col-span-7 min-w-0">
-                        <div className="text-xs md:text-sm font-bold truncate">{c.title}</div>
-                        <div className="text-[10px] md:text-[11px] text-muted-foreground font-medium flex items-center gap-2 mt-0.5">
-                          <span>{c.date}</span>
-                          {c.location && (
-                            <>
-                              <span className="opacity-30">•</span>
-                              <span>{c.location}</span>
-                            </>
-                          )}
-                          {c.source && (
-                            <>
-                              <span className="opacity-30">•</span>
-                              <span className="uppercase tracking-widest text-[9px]">{c.source}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="col-span-12 md:col-span-5 text-left md:text-right">
-                        <div className="text-base md:text-lg font-black text-accent tabular-nums leading-none">
-                          {formatCurrency(c.price)}
-                        </div>
+              {/* Key Features */}
+              {item.keyFeatures && item.keyFeatures.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('features')}
+                    className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={16} className="text-accent" />
+                      <h3 className="text-base font-black tracking-tight">Key Features</h3>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                        {item.keyFeatures.length} Included
+                      </span>
+                      <ChevronDown
+                        size={18}
+                        className={cn(
+                          'text-muted-foreground transition-transform duration-200',
+                          openSections.has('features') && 'rotate-180',
+                        )}
+                      />
+                    </div>
+                  </button>
+                  {openSections.has('features') && (
+                    <div className="px-5 pb-5 pt-1">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                        {item.keyFeatures.map((feature, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gradient-to-br from-accent/[0.06] to-accent/[0.02] border border-accent/15 transition"
+                          >
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent/15 shrink-0">
+                              <CheckCircle2 size={13} className="text-accent" />
+                            </span>
+                            <span className="text-xs md:text-sm font-bold text-foreground/90 leading-tight">
+                              {feature}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
+              )}
 
-            {item.sellerNotes && (
-              <div className="space-y-3 md:space-y-4 pt-6 md:pt-8 border-t border-white/5">
-                <div className="flex items-center gap-2 md:gap-3">
-                  <FileText size={14} className="text-accent" />
-                  <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.22em] text-accent">
-                    Seller Notes
-                  </span>
-                </div>
-                <h3 className="text-lg md:text-2xl font-black tracking-tight">From the Seller</h3>
-                <div className="p-4 md:p-5 rounded-xl md:rounded-2xl bg-secondary/[0.08] border border-white/5">
-                  <p className="text-muted-foreground leading-relaxed text-sm md:text-base whitespace-pre-line">
-                    {item.sellerNotes}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {item.publicQA && item.publicQA.length > 0 && (
-              <div className="space-y-3 md:space-y-4 pt-6 md:pt-8 border-t border-white/5">
-                <div className="flex items-center gap-2 md:gap-3">
-                  <Info size={14} className="text-accent" />
-                  <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.22em] text-accent">
-                    Public Q&amp;A
-                  </span>
-                </div>
-                <h3 className="text-lg md:text-2xl font-black tracking-tight">Buyer Questions</h3>
-                <div className="space-y-3 md:space-y-4">
-                  {item.publicQA.map((q, i) => (
-                    <div
-                      key={i}
-                      className="rounded-xl md:rounded-2xl border border-white/5 bg-secondary/[0.06] p-4 md:p-5 space-y-3"
-                    >
+              {/* Intelligence Report */}
+              <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('intel')}
+                  className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <BarChart3 size={16} className="text-accent" />
+                    <h3 className="text-base font-black tracking-tight">Intelligence Report</h3>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      <Lock size={10} /> Locked
+                    </span>
+                    <ChevronDown
+                      size={18}
+                      className={cn(
+                        'text-muted-foreground transition-transform duration-200',
+                        openSections.has('intel') && 'rotate-180',
+                      )}
+                    />
+                  </div>
+                </button>
+                {openSections.has('intel') && (
+                  <div className="px-5 pb-5 pt-1 space-y-6">
+                    <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
-                        <div className="flex items-center gap-2 text-[10px] md:text-[11px] text-muted-foreground font-bold">
-                          <span>{q.askedBy}</span>
-                          <span className="opacity-30">•</span>
-                          <span>{q.askedAt}</span>
-                        </div>
-                        <p className="text-sm md:text-base font-bold mt-1">{q.question}</p>
+                        <div className="text-3xl font-black text-accent leading-none">82</div>
+                        <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1.5">Score</div>
                       </div>
-                      {q.answer ? (
-                        <div className="pt-3 border-t border-white/5">
-                          <div className="flex items-center gap-2 text-[10px] md:text-[11px] text-accent font-black uppercase tracking-widest">
-                            <span>{q.answeredBy || 'Seller'}</span>
-                            {q.answeredAt && (
-                              <>
-                                <span className="opacity-30">•</span>
-                                <span>{q.answeredAt}</span>
-                              </>
-                            )}
+                      <div className="border-x border-white/[0.06]">
+                        <div className="text-sm font-black text-accent leading-none pt-1">{item.buyerEdgeScore || 'Strong Buy'}</div>
+                        <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-2">Verdict</div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-center gap-1 pt-1">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                'w-1.5 h-1.5 rounded-full',
+                                i <= (item.confidence ?? 4) ? 'bg-accent' : 'bg-white/10',
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-2">Confidence</div>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground leading-relaxed text-center">
+                      Unlock to see market value, comparable sales, bid strategy, Carproof, and lien search.
+                    </p>
+
+                    <button
+                      onClick={onList}
+                      className="w-full h-12 rounded-xl bg-accent hover:bg-accent/90 text-black font-black text-sm tracking-tight transition flex items-center justify-center gap-2"
+                    >
+                      <Lock size={14} /> Unlock Full Report
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Auction Terms */}
+              {item.auctionTerms && item.auctionTerms.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('terms')}
+                    className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Gavel size={16} className="text-accent" />
+                      <h3 className="text-base font-black tracking-tight">Auction Terms</h3>
+                    </div>
+                    <ChevronDown
+                      size={18}
+                      className={cn(
+                        'text-muted-foreground transition-transform duration-200',
+                        openSections.has('terms') && 'rotate-180',
+                      )}
+                    />
+                  </button>
+                  {openSections.has('terms') && (
+                    <div className="px-5 pb-5 pt-1">
+                      <ul className="space-y-2.5">
+                        {item.auctionTerms.map((t, i) => (
+                          <li
+                            key={i}
+                            className="flex items-start gap-3 text-sm md:text-[15px] text-foreground/85 leading-relaxed"
+                          >
+                            <span className="text-accent/70 font-black mt-0.5">{String(i + 1).padStart(2, '0')}</span>
+                            <span>{t}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Comments */}
+              <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('comments')}
+                  className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <MessageSquare size={16} className="text-accent" />
+                    <h3 className="text-base font-black tracking-tight">Comments</h3>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      {item.comments?.length ?? 0}
+                    </span>
+                    <ChevronDown
+                      size={18}
+                      className={cn(
+                        'text-muted-foreground transition-transform duration-200',
+                        openSections.has('comments') && 'rotate-180',
+                      )}
+                    />
+                  </div>
+                </button>
+                {openSections.has('comments') && (
+                  <div className="px-5 pb-5 pt-1 space-y-5">
+                    <div className="space-y-4">
+                      {(item.comments ?? []).map((c, i) => (
+                        <div key={i} className="flex gap-3">
+                          <img
+                            src={`https://i.pravatar.cc/80?u=${encodeURIComponent(c.author)}`}
+                            alt={c.author}
+                            className="w-9 h-9 rounded-full object-cover border border-white/10 shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <span className="text-sm font-black">@{c.author}</span>
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                {c.postedAt}
+                              </span>
+                            </div>
+                            <p className="text-sm text-foreground/85 leading-relaxed mt-1">{c.body}</p>
+                            <div className="flex items-center gap-4 mt-2">
+                              <button
+                                type="button"
+                                className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-accent transition"
+                              >
+                                <Heart size={12} /> {c.likes ?? 0}
+                              </button>
+                              <button
+                                type="button"
+                                className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-accent transition"
+                              >
+                                Reply
+                              </button>
+                            </div>
                           </div>
-                          <p className="text-sm md:text-[15px] text-foreground/85 mt-1.5 leading-relaxed">{q.answer}</p>
                         </div>
-                      ) : (
-                        <div className="pt-3 border-t border-white/5 text-[11px] md:text-xs text-muted-foreground italic">
-                          Awaiting seller response.
-                        </div>
+                      ))}
+                      {(item.comments?.length ?? 0) === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-3">
+                          No comments yet. Be the first to say something.
+                        </p>
                       )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
-            {item.auctionTerms && item.auctionTerms.length > 0 && (
-              <div className="space-y-3 md:space-y-4 pt-6 md:pt-8 border-t border-white/5">
-                <div className="flex items-center gap-2 md:gap-3">
-                  <Gavel size={14} className="text-accent" />
-                  <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.22em] text-accent">
-                    Auction Terms
-                  </span>
-                </div>
-                <h3 className="text-lg md:text-2xl font-black tracking-tight">Auction Terms</h3>
-                <ul className="space-y-2 md:space-y-2.5">
-                  {item.auctionTerms.map((t, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-3 text-sm md:text-[15px] text-foreground/85 leading-relaxed"
-                    >
-                      <span className="text-accent/70 font-black mt-0.5">{String(i + 1).padStart(2, '0')}</span>
-                      <span>{t}</span>
-                    </li>
-                  ))}
-                </ul>
+                    <div className="flex gap-3 pt-3 border-t border-white/5">
+                      <img
+                        src="https://i.pravatar.cc/80?u=current-user"
+                        alt="You"
+                        className="w-9 h-9 rounded-full object-cover border border-white/10 shrink-0"
+                      />
+                      <div className="flex-1 flex items-stretch gap-2 rounded-xl border border-white/10 bg-background/40 focus-within:border-accent/50 transition overflow-hidden">
+                        <input
+                          type="text"
+                          placeholder="Add a comment…"
+                          className="flex-1 bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          className="flex items-center justify-center w-12 bg-accent text-black hover:bg-accent/90 transition"
+                          aria-label="Post comment"
+                        >
+                          <Send size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </section>
         </div>
 
         <aside className="lg:col-span-5">
           <div className="sticky top-24 space-y-4">
-            {item.status === 'live' && <NativeBiddingPanel item={item} />}
-            <div className="rounded-2xl border border-white/10 shadow-[0_8px_40px_rgba(0,0,0,0.5)] overflow-hidden relative">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-40 bg-accent/[0.05] rounded-full blur-[80px] pointer-events-none" />
-
-              <div className="relative px-6 pt-6 pb-5 text-center">
-                <div className="inline-flex flex-col items-center">
-                  <span className="text-[8px] font-black text-muted-foreground/50 uppercase tracking-[0.25em] mb-4">
-                    Price Score
-                  </span>
-                  <div className="relative w-[104px] h-[104px] mb-4">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="5" />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        fill="none"
-                        stroke="url(#scoreGradient)"
-                        strokeWidth="5"
-                        strokeDasharray={`${82 * 2.64} ${100 * 2.64}`}
-                        strokeLinecap="round"
-                      />
-                      <defs>
-                        <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="rgb(29,208,88)" stopOpacity="1" />
-                          <stop offset="100%" stopColor="rgb(29,208,88)" stopOpacity="0.4" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-[32px] font-black text-foreground tracking-tighter leading-none">82</span>
-                      <span className="text-[8px] font-bold text-muted-foreground/40 uppercase mt-0.5">/100</span>
-                    </div>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/[0.08] border border-green-500/20 text-[9px] font-black text-green-400 uppercase tracking-wider">
-                    <Zap size={8} fill="currentColor" /> {item.buyerEdgeScore || 'Strong Buy'}
-                  </span>
-                </div>
+            {item.status === 'live' && (
+              <div className="hidden lg:block">
+                <NativeBiddingPanel item={item} />
               </div>
-
-              <div className="mx-5 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
-              <div className="px-6 py-4 grid grid-cols-3 gap-3 text-center">
-                <div>
-                  <div className="text-[7px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em] mb-1.5">
-                    Location
-                  </div>
-                  <div className="text-[11px] font-bold text-foreground/70 truncate">
-                    {locationCity}
-                    {locationRegion ? `, ${locationRegion}` : ''}
-                  </div>
-                </div>
-                <div className="border-x border-white/[0.06]">
-                  <div className="text-[7px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em] mb-1.5">
-                    Category
-                  </div>
-                  <div className="text-[11px] font-bold text-foreground/70 truncate">{item.category}</div>
-                </div>
-                <div>
-                  <div className="text-[7px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em] mb-1.5">
-                    Confidence
-                  </div>
-                  <div className="flex items-center justify-center gap-1.5 mt-0.5">
-                    <div className="flex gap-[3px]">
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <div
-                          key={i}
-                          className={cn(
-                            'w-2 h-2 rounded-full',
-                            i <= (item.confidence ?? 4) ? 'bg-accent/70' : 'bg-white/[0.06]',
-                          )}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mx-5 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
-              <div className="p-6 relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6 h-6 rounded-lg bg-accent/[0.08] flex items-center justify-center">
-                      <BarChart3 size={12} className="text-accent/70" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/70">
-                      Intelligence Report
-                    </span>
-                  </div>
-                  <span className="text-[7px] font-bold text-muted-foreground/40 uppercase tracking-[0.15em] flex items-center gap-1">
-                    <Lock size={7} /> Locked
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 relative">
-                  {[
-                    { icon: <DollarSign size={12} />, label: 'Market value estimate' },
-                    { icon: <History size={12} />, label: 'Comparable sales' },
-                    { icon: <ArrowDownRight size={12} />, label: 'Price gap analysis' },
-                    { icon: <Gavel size={12} />, label: 'Bid strategy notes' },
-                    { icon: <ShieldCheck size={12} />, label: 'Seller / auctioneer confidence' },
-                    { icon: <Globe size={12} />, label: 'Transport considerations' },
-                    { icon: <Timer size={12} />, label: 'Similar auctions ending soon' },
-                  ].map((row, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        'flex items-center gap-3 py-2 px-3 rounded-lg transition-all',
-                        i >= 3 && 'opacity-40',
-                      )}
-                    >
-                      <div className="text-accent/30 flex-shrink-0">{row.icon}</div>
-                      <span className="text-[11px] font-medium text-foreground/45">{row.label}</span>
-                      <div className="ml-auto w-12 h-1.5 rounded-full bg-white/[0.05]" />
-                    </div>
-                  ))}
-                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="px-6 pb-6 pt-2 space-y-3">
-                <button
-                  onClick={onList}
-                  className="w-full h-12 rounded-xl bg-accent hover:bg-accent/90 text-black font-black text-[13px] tracking-tight transition-all shadow-[0_0_20px_rgba(29,208,88,0.15)] hover:shadow-[0_0_30px_rgba(29,208,88,0.25)] flex items-center justify-center gap-2 active:scale-[0.98]"
-                >
-                  <Lock size={13} /> Unlock Full Intelligence Report
-                </button>
-
-                <p className="text-center text-[10px] text-muted-foreground/70 leading-relaxed px-2">
-                  Get price scores, comparable sales, buyer notes, and weekly curated auction picks.
-                </p>
-
-                <div className="flex items-center justify-center gap-3">
-                  <span className="text-[9px] text-muted-foreground/40 font-medium">
-                    From <span className="text-accent/60 font-bold">$9/mo</span>
-                  </span>
-                  <span className="w-0.5 h-0.5 rounded-full bg-white/10" />
-                  <button
-                    onClick={onList}
-                    className="text-[9px] text-muted-foreground/50 hover:text-foreground/70 font-medium transition-colors underline underline-offset-2 decoration-white/10"
-                  >
-                    Download sample report
-                  </button>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </aside>
       </div>
 
-      {item.status === 'live' && (
-        <div className="fixed bottom-14 left-0 right-0 z-[90] md:hidden p-4 bg-background/80 backdrop-blur-xl border-t border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.5)]">
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">
-                Current Bid
+      {item.status === 'live' && (() => {
+        const cur = item.currentBid || 0;
+        const inc = cur < 5000 ? 100 : cur < 25000 ? 500 : cur < 100000 ? 1000 : 2500;
+        const nextBid = cur + inc;
+        return (
+          <div className="fixed bottom-14 left-0 right-0 z-[90] md:hidden p-4 bg-background/80 backdrop-blur-xl border-t border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">
+                  Current Bid
+                </div>
+                <div className="text-xl font-black text-accent">{formatCurrency(cur)}</div>
               </div>
-              <div className="text-xl font-black text-accent">{formatCurrency(item.currentBid || 0)}</div>
+              <button
+                onClick={onList}
+                className="flex-[2] h-12 rounded-xl font-black text-2xl uppercase tracking-tight bg-accent text-black flex items-center justify-center"
+              >
+                Bid: {formatCurrency(nextBid)}
+              </button>
             </div>
-            <button
-              onClick={onList}
-              className="flex-[2] h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-accent text-black flex items-center justify-center gap-1.5"
-            >
-              <Lock size={13} /> Unlock Access
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
