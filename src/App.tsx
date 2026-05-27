@@ -459,36 +459,34 @@ const AuctionCard: React.FC<{ item: AuctionItem; onClick?: () => void; onChannel
           onClick={(e) => { e.stopPropagation(); if (channel && onChannelClick) onChannelClick(channel.id); }}
           className="shrink-0"
         >
-          <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-800">
-            <img src={channel?.avatar} alt="" className="w-full h-full object-cover" />
-          </div>
+          <img src={channel?.avatar} alt="" className="w-10 h-10 rounded-full object-cover bg-neutral-800" />
         </button>
 
         <div className="flex-1 min-w-0">
           <h3 className="text-[15px] font-semibold text-white leading-snug line-clamp-2">
             {item.title}
           </h3>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); if (channel && onChannelClick) onChannelClick(channel.id); }}
-            className="flex items-center gap-1 text-sm text-neutral-400 hover:text-white transition mt-1"
-          >
-            <span>{channel?.name}</span>
+          <div className="text-[12px] text-neutral-400 leading-tight mt-0.5">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); if (channel && onChannelClick) onChannelClick(channel.id); }}
+              className="hover:text-white transition"
+            >
+              {channel?.name}
+            </button>
             {item.isNative && (
-              <svg viewBox="0 0 24 24" width="13" height="13" className="text-neutral-500 fill-current">
+              <svg viewBox="0 0 24 24" width="12" height="12" className="inline-block ml-1 -mt-px text-neutral-500 fill-current align-middle">
                 <path d="M12 2 9.4 4.6 6 4l-.6 3.4L2 9l1.6 3L2 15l3.4 1.6L6 20l3.4-.6L12 22l2.6-2.6L18 20l.6-3.4L22 15l-1.6-3L22 9l-3.4-1.6L18 4l-3.4.6Zm-1 14-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9Z" />
               </svg>
             )}
-          </button>
-          <div className="text-sm text-neutral-400 leading-tight">
-            ${item.currentBid.toLocaleString()} · {item.location}
+            <span> · ${item.currentBid.toLocaleString()} · {item.location}</span>
           </div>
         </div>
 
         <button
           type="button"
           onClick={(e) => e.stopPropagation()}
-          className="shrink-0 w-8 h-8 -mr-1 flex items-center justify-center text-neutral-400 hover:text-white rounded-full hover:bg-white/5 transition"
+          className="shrink-0 w-8 -mr-2 -mt-1 flex items-start justify-center text-neutral-400 hover:text-white rounded-full hover:bg-white/5 transition"
           aria-label="More"
         >
           <MoreVertical size={18} />
