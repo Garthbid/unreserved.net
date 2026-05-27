@@ -533,9 +533,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-green-500 selection:text-black">
-      <Navbar onOpenSubmit={() => setSubmitOpen(true)} />
+      {!detailItem && <Navbar onOpenSubmit={() => setSubmitOpen(true)} />}
 
-      <div className="flex flex-1 pt-14 pb-14 md:pb-0">
+      <div className={`flex flex-1 ${detailItem ? '' : 'pt-14'} pb-14 md:pb-0`}>
         <Sidebar activeView={activeView} onSelect={handleSelectView} onChannelClick={handleSelectChannel} />
 
         <main className="flex-1 md:ml-[240px] overflow-y-auto min-h-screen no-scrollbar bg-[#050505]">

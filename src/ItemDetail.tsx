@@ -30,6 +30,10 @@ import {
   Heart,
   Send,
   MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  Share2,
+  Bookmark,
 } from 'lucide-react';
 import { AuctionItem } from './types';
 import { cn, formatCurrency } from './lib/utils';
@@ -304,6 +308,9 @@ export const ItemDetailPage = ({
   };
 
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+  const [subscribed, setSubscribed] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [saved, setSaved] = useState(false);
   const toggleSection = (key: string) =>
     setOpenSections((prev) => {
       const next = new Set(prev);
@@ -392,104 +399,136 @@ export const ItemDetailPage = ({
             </div>
           )}
 
-          <section className="space-y-4 md:space-y-6">
-            <div className="space-y-2 md:space-y-3">
-              <h1 className="text-lg md:text-3xl font-black tracking-tight leading-tight truncate">
-                {item.title}
-              </h1>
-              <div className="flex items-center gap-2 md:gap-3 flex-wrap text-[11px] md:text-sm font-bold">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <MapPin size={13} className="text-accent" />
-                  <span>{item.location}</span>
-                </div>
-                {item.sellerName && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-white/15" />
-                    <div className="flex items-center gap-1.5 text-foreground">
-                      <span>{item.sellerName}</span>
-                      <BadgeCheck size={14} className="text-accent fill-accent/20" />
-                    </div>
-                  </>
-                )}
-              </div>
+          <section className="space-y-3 md:space-y-4">
+            <h1 className="text-lg md:text-2xl font-bold tracking-tight leading-snug">
+              {item.title}
+            </h1>
+
+            <div className="text-[13px] text-neutral-400 leading-snug">
+              {item.sellerName && (
+                <span className="font-medium text-neutral-300">@{item.sellerName.toLowerCase().replace(/\s+/g, '')}</span>
+              )}
+              {item.views != null && <> · {item.views.toLocaleString()} views</>}
+              {item.endTime && (
+                <>
+                  {' · '}
+                  <span className="text-red-400 font-medium">Ends in {countdown}</span>
+                </>
+              )}
+              {' · '}
+              <span>{item.location}</span>
+              <button type="button" className="text-white font-semibold ml-1 hover:underline">
+                ...more
+              </button>
             </div>
 
-            {(item.endTime || item.winningBidder) && (
-              <div className="rounded-xl border border-white/[0.08] bg-secondary/[0.05] divide-x divide-white/[0.06] grid grid-cols-2">
-                {item.endTime && (
-                  <div className="flex items-center gap-3 px-4 md:px-5 py-3 md:py-3.5">
-                    <Timer size={16} className="text-red-400 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
-                        Ends In
-                      </div>
-                      <div className="text-sm md:text-base font-black text-red-400 tabular-nums truncate">
-                        {countdown}
-                      </div>
-                    </div>
-                  </div>
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+              {item.sellerName && (
+                <button
+                  type="button"
+                  className="shrink-0 flex items-center gap-2 group"
+                  aria-label={`${item.sellerName} profile`}
+                >
+                  <img
+                    src={`https://i.pravatar.cc/100?u=${encodeURIComponent(item.sellerName)}`}
+                    alt={item.sellerName}
+                    className="w-9 h-9 rounded-full object-cover"
+                  />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSubscribed((s) => !s)}
+                className={cn(
+                  'shrink-0 h-9 px-4 rounded-full text-sm font-semibold transition',
+                  subscribed
+                    ? 'bg-white/[0.1] text-white hover:bg-white/[0.15]'
+                    : 'bg-white text-black hover:bg-white/90',
                 )}
-                {item.winningBidder && (
-                  <div className="flex items-center gap-3 px-4 md:px-5 py-3 md:py-3.5">
-                    <Crown size={16} className="text-accent shrink-0" />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
-                          {item.status === 'live' ? 'Leader' : 'Winner'}
-                        </span>
-                        {item.status === 'live' && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-red-500/15 text-red-400 text-[8px] md:text-[9px] font-black uppercase tracking-wider">
-                            <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                            Live
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm md:text-base font-black truncate">
-                        <span className="text-muted-foreground/60">@</span>
-                        {item.winningBidder}
-                      </div>
-                    </div>
-                  </div>
+              >
+                {subscribed ? 'Subscribed' : 'Subscribe'}
+              </button>
+
+              <div className="shrink-0 flex items-center bg-white/[0.1] rounded-full">
+                <button
+                  type="button"
+                  onClick={() => setLiked((l) => !l)}
+                  className="flex items-center gap-1.5 pl-3.5 pr-3 h-9 hover:bg-white/[0.05] rounded-l-full transition"
+                >
+                  <ThumbsUp size={17} className={cn(liked && 'fill-current')} />
+                  <span className="text-sm">{((item.views ?? 0) / 50 | 0) + (liked ? 1 : 0)}</span>
+                </button>
+                <div className="h-5 w-px bg-white/15" />
+                <button
+                  type="button"
+                  className="px-3.5 h-9 hover:bg-white/[0.05] rounded-r-full transition"
+                  aria-label="Dislike"
+                >
+                  <ThumbsDown size={17} />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-white/[0.1] hover:bg-white/[0.15] transition text-sm"
+              >
+                <Share2 size={17} />
+                Share
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSaved((s) => !s)}
+                className="shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-white/[0.1] hover:bg-white/[0.15] transition text-sm"
+              >
+                <Bookmark size={17} className={cn(saved && 'fill-current')} />
+                Save
+              </button>
+            </div>
+
+            {item.winningBidder && (
+              <div className="flex items-center gap-2 text-[13px] text-neutral-400">
+                <Crown size={14} className="text-accent" />
+                <span>
+                  <span className="font-medium text-neutral-300">@{item.winningBidder}</span>{' '}
+                  {item.status === 'live' ? 'is currently leading' : 'won this auction'}
+                </span>
+                {item.status === 'live' && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-red-500/15 text-red-400 text-[10px] font-bold uppercase tracking-wider">
+                    <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                    Live
+                  </span>
                 )}
               </div>
             )}
 
-            {item.sellerName && (
-              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-secondary/[0.12] via-zinc-950 to-black p-4 md:p-5 space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
-                <div className="flex items-center gap-3 md:gap-4">
-                  <div className="relative shrink-0">
-                    <span className="absolute -inset-1 rounded-full bg-accent/30 blur-md" />
-                    <img
-                      src={`https://i.pravatar.cc/120?u=${encodeURIComponent(item.sellerName)}`}
-                      alt={item.sellerName}
-                      className="relative w-11 h-11 md:w-12 md:h-12 rounded-full object-cover border border-accent/40"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-black text-sm md:text-base truncate">{item.sellerName}</span>
-                      <BadgeCheck size={14} className="text-accent fill-accent/20 shrink-0" />
-                    </div>
-                    <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
-                      Trusted Seller
-                    </div>
+            {item.comments && item.comments.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!openSections.has('comments')) toggleSection('comments');
+                  setTimeout(() => {
+                    document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 50);
+                }}
+                className="w-full text-left rounded-xl bg-secondary/[0.08] hover:bg-secondary/[0.14] px-4 py-3 transition"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold">Comments</span>
+                  <span className="text-[13px] text-neutral-400">{item.comments.length}</span>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <img
+                    src={`https://i.pravatar.cc/60?u=${encodeURIComponent(item.comments[0].author)}`}
+                    alt=""
+                    className="w-6 h-6 rounded-full object-cover shrink-0"
+                  />
+                  <div className="text-[13px] text-foreground/85 leading-snug line-clamp-2">
+                    <span className="text-neutral-400">@{item.comments[0].author}</span>{' '}
+                    {item.comments[0].body}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 md:gap-3">
-                  <button
-                    onClick={onList}
-                    className="h-11 md:h-12 rounded-xl bg-accent hover:bg-accent/90 text-black font-black text-xs md:text-sm uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-[0_0_20px_rgba(29,208,88,0.2)]"
-                  >
-                    <MessageCircle size={15} /> Message
-                  </button>
-                  <button
-                    onClick={onList}
-                    className="h-11 md:h-12 rounded-xl bg-transparent border border-white/15 hover:border-accent/50 hover:bg-accent/[0.04] text-foreground font-black text-xs md:text-sm uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition"
-                  >
-                    <Phone size={15} /> Call
-                  </button>
-                </div>
-              </div>
+              </button>
             )}
 
             <div className="space-y-3 md:space-y-3 pt-6 md:pt-8 border-t border-white/5">
@@ -726,7 +765,7 @@ export const ItemDetailPage = ({
               )}
 
               {/* Comments */}
-              <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] overflow-hidden">
+              <div id="comments-section" className="rounded-2xl border border-white/10 bg-secondary/[0.04] overflow-hidden scroll-mt-4">
                 <button
                   type="button"
                   onClick={() => toggleSection('comments')}
