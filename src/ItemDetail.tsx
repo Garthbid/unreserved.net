@@ -30,9 +30,7 @@ import {
   Heart,
   Send,
   MessageSquare,
-  ThumbsUp,
-  ThumbsDown,
-  Share2,
+  Forward,
   Bookmark,
 } from 'lucide-react';
 import { AuctionItem } from './types';
@@ -286,14 +284,339 @@ const NativeBiddingPanel: React.FC<{ item: AuctionItem }> = ({ item }) => {
   );
 };
 
+// ---------- Floor-setter panel ----------
+
+const FLOOR_BID_TTL_MS = 60 * 60 * 1000;
+
+const useNowTick = (intervalMs = 1000) => {
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+};
+
+const formatCountdown = (ms: number) => {
+  if (!Number.isFinite(ms) || ms <= 0) return '00:00';
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
+
+type FloorBidStatus = 'active' | 'expired' | 'accepted';
+type FloorHistoryEntry = {
+  user: string;
+  offset: number;
+  minutesAgo: number;
+  status: FloorBidStatus;
+};
+
+const FLOOR_HISTORY_BASE: FloorHistoryEntry[] = [
+  { user: 'user2345',      offset:     0, minutesAgo:    18, status: 'active' },
+  { user: 'prairie_buyer', offset:  -100, minutesAgo:   240, status: 'expired' },
+  { user: 'kls_holdings',  offset:  -200, minutesAgo:   480, status: 'expired' },
+  { user: 'truckguy_88',   offset:  -300, minutesAgo:   660, status: 'expired' },
+  { user: 'lariat_fan',    offset:  -400, minutesAgo:  1440, status: 'expired' },
+  { user: 'shopfloor',     offset:  -600, minutesAgo:  1680, status: 'expired' },
+  { user: 'mtn_motors',    offset:  -700, minutesAgo:  2880, status: 'expired' },
+];
+
+const formatTimestamp = (minutesAgo: number) => {
+  const d = new Date(Date.now() - minutesAgo * 60 * 1000);
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+const FloorSetterPanel: React.FC<{ item: AuctionItem }> = ({ item }) => {
+  const initialBid = item.currentBid ?? 0;
+  const FLOOR_RAISE_INCREMENT = 100;
+  const minNext = initialBid + FLOOR_RAISE_INCREMENT;
+  const [floorInput, setFloorInput] = useState<number>(minNext);
+  const reward = Math.max(0, Math.round(floorInput * 0.01));
+
+  const estLow = useMemo(() => Math.round((initialBid * 1.025) / 100) * 100, [initialBid]);
+  const estHigh = useMemo(() => Math.round((initialBid * 1.23) / 100) * 100, [initialBid]);
+
+  const topEntry = FLOOR_HISTORY_BASE.find((e) => e.status === 'active') ?? FLOOR_HISTORY_BASE[0];
+  const topFloorAmount = initialBid + topEntry.offset;
+  const topPlacedAt = useMemo(() => Date.now() - topEntry.minutesAgo * 60 * 1000, [topEntry.minutesAgo]);
+  const now = useNowTick(1000);
+  const topRemaining = topPlacedAt + FLOOR_BID_TTL_MS - now;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] px-4 md:px-5 py-4">
+          <div className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground mb-2">
+            Top Floor Bid
+          </div>
+          <div className="text-2xl md:text-3xl font-black text-accent tabular-nums leading-none">
+            {formatCurrency(initialBid)}
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-2">1 floor bid</div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] px-4 md:px-5 py-4">
+          <div className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground mb-2">
+            AI Estimate
+          </div>
+          <div className="text-base md:text-xl font-black tabular-nums leading-none">
+            {formatCurrency(estLow)} – {formatCurrency(estHigh)}
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-2">Based on market comps</div>
+        </div>
+      </div>
+
+      <div className="relative rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/[0.05] via-background to-background overflow-hidden shadow-[0_0_50px_rgba(29,208,88,0.12)]">
+        <div className="absolute -top-16 -right-16 w-48 h-48 bg-accent/15 rounded-full blur-[60px] pointer-events-none" />
+
+        <div className="relative px-5 md:px-6 py-5 space-y-5">
+          <div className="flex items-center justify-between gap-3 -mt-1 pb-3 border-b border-white/[0.06] tabular-nums">
+            <div className="text-[12px] text-foreground/85 truncate">
+              Top floor:{' '}
+              <span className="font-bold text-foreground">{formatCurrency(topFloorAmount)}</span>{' '}
+              <span className="text-muted-foreground">by</span>{' '}
+              <span className="font-bold">@{topEntry.user}</span>
+            </div>
+            {topRemaining > 0 ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/15 border border-amber-500/35 text-amber-300 text-[10px] font-black uppercase tracking-[0.14em] shrink-0 tabular-nums">
+                <Timer size={10} />
+                Expires in {formatCountdown(topRemaining)}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/[0.04] border border-white/10 text-muted-foreground text-[10px] font-black uppercase tracking-[0.14em] shrink-0">
+                Expired
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0 mt-0.5">
+              <DollarSign size={18} className="text-accent" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base md:text-lg font-black tracking-tight leading-tight">
+                Set the floor. Get paid instantly.
+              </h3>
+              <p className="text-[13px] text-foreground/85 mt-1.5 leading-snug">
+                Earn <span className="text-accent font-black">1% cash reward</span> if seller accepts.
+              </p>
+              <p className="text-[12px] text-muted-foreground mt-1 leading-snug">
+                If the auction doesn't beat your floor, you buy it.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="text-[9px] font-black uppercase tracking-[0.22em] text-muted-foreground">
+              Your Floor Bid
+            </div>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-black">$</span>
+              <input
+                type="number"
+                value={Number.isFinite(floorInput) ? floorInput : ''}
+                onChange={(e) => setFloorInput(parseInt(e.target.value, 10) || 0)}
+                className="w-full py-3 bg-background border border-accent/40 focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-xl pl-8 pr-4 outline-none transition-all font-black text-xl tabular-nums"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground tabular-nums flex items-center gap-1.5">
+              Minimum floor raise: <span className="text-foreground font-bold">{formatCurrency(minNext)}</span>
+            </p>
+          </div>
+
+          <div className="text-[11px] text-muted-foreground tabular-nums">
+            Instant reward if accepted:{' '}
+            <span className="text-accent font-black">
+              {formatCurrency(floorInput >= minNext ? reward : Math.round(minNext * 0.01))}
+            </span>
+          </div>
+
+          <button
+            className="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-accent hover:bg-accent/90 text-black shadow-[0_0_24px_rgba(29,208,88,0.25)] hover:shadow-[0_0_32px_rgba(29,208,88,0.45)] active:scale-[0.99]"
+          >
+            <Lock size={14} strokeWidth={3} />
+            Place 1-Hour Floor Bid
+          </button>
+
+          <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+            Binding if accepted — otherwise expires in 1 hour.
+          </p>
+        </div>
+      </div>
+
+      <FloorHistory currentFloor={initialBid} activeRemaining={topRemaining} />
+    </div>
+  );
+};
+
+const FloorHistory: React.FC<{ currentFloor: number; activeRemaining: number }> = ({ currentFloor, activeRemaining }) => {
+  const [expanded, setExpanded] = useState(false);
+  const entries = useMemo(
+    () => FLOOR_HISTORY_BASE.map((e) => ({ ...e, amount: Math.max(0, currentFloor + e.offset) })),
+    [currentFloor],
+  );
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition"
+      >
+        <div className="flex items-center gap-2">
+          <History size={16} className="text-accent" />
+          <h3 className="text-base font-black tracking-tight">Floor History</h3>
+          <span className="text-muted-foreground/50">·</span>
+          <span className="text-[12px] font-bold text-muted-foreground tabular-nums">
+            {entries.length} bids
+          </span>
+        </div>
+        <ChevronDown
+          size={18}
+          className={cn(
+            'text-muted-foreground transition-transform duration-200',
+            expanded && 'rotate-180',
+          )}
+        />
+      </button>
+
+      {expanded && (
+        <ul className="divide-y divide-white/[0.05] border-t border-white/[0.06]">
+          {entries.map((e, i) => {
+            const effectiveStatus: FloorBidStatus =
+              e.status === 'active' && activeRemaining <= 0 ? 'expired' : e.status;
+            const isActive = effectiveStatus === 'active';
+            const isAccepted = effectiveStatus === 'accepted';
+            const isExpired = effectiveStatus === 'expired';
+            return (
+              <li
+                key={`${e.user}-${i}`}
+                className={cn(
+                  'flex items-center gap-3 px-5 py-3 transition',
+                  isActive && 'bg-accent/[0.06]',
+                  isAccepted && 'bg-accent/[0.04]',
+                )}
+              >
+                <img
+                  src={`https://i.pravatar.cc/80?u=${encodeURIComponent(e.user)}`}
+                  alt=""
+                  className={cn(
+                    'w-8 h-8 rounded-full object-cover border shrink-0',
+                    isExpired ? 'border-white/10 grayscale opacity-70' : 'border-white/10',
+                  )}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={cn(
+                        'text-sm font-bold',
+                        isExpired ? 'text-muted-foreground' : 'text-foreground/90',
+                      )}
+                    >
+                      @{e.user}
+                    </span>
+                    {isActive && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-amber-500/15 text-amber-300 text-[9px] font-black uppercase tracking-widest tabular-nums">
+                        <Timer size={9} /> Active · {formatCountdown(activeRemaining)} left
+                      </span>
+                    )}
+                    {isAccepted && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-accent/15 text-accent text-[9px] font-black uppercase tracking-widest">
+                        <CheckCircle2 size={9} /> Accepted
+                      </span>
+                    )}
+                    {isExpired && (
+                      <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70">
+                        Expired
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+                    {formatTimestamp(e.minutesAgo)}
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    'text-base font-black tabular-nums shrink-0',
+                    isActive || isAccepted
+                      ? 'text-accent'
+                      : 'text-muted-foreground line-through decoration-muted-foreground/40',
+                  )}
+                >
+                  {formatCurrency(e.amount)}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const FloorHowItWorks: React.FC = () => (
+  <div id="what-is-floor-market" className="mt-8 md:mt-10 grid grid-cols-1 lg:grid-cols-3 gap-4 scroll-mt-20">
+    <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-secondary/[0.04] p-5 md:p-6">
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground mb-5">
+        How It Works
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {[
+          { icon: DollarSign, title: '1. You set the floor', body: 'Place a binding floor bid on an asset you would gladly buy at that price.' },
+          { icon: CheckCircle2, title: '2. Seller accepts', body: 'You earn an instant 1% cash reward the moment the seller accepts.' },
+          { icon: Gavel, title: '3. Auction goes live', body: 'Launches unreserved at one increment above your floor. If no one outbids you, the asset is yours — and the 1% reward stays yours.' },
+        ].map((step, i) => (
+          <div key={i} className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
+              <step.icon size={16} className="text-accent" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-black leading-tight">{step.title}</div>
+              <div className="text-[12px] text-muted-foreground mt-1 leading-relaxed">{step.body}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div className="rounded-2xl border border-white/10 bg-secondary/[0.04] p-5 md:p-6">
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground mb-5">
+        Why Floor Bidders Win
+      </div>
+      <ul className="space-y-3">
+        {[
+          'Get paid for creating certainty',
+          'Access to quality assets first',
+          'Data-driven pricing insights',
+          'Binding floor protects the seller',
+        ].map((line, i) => (
+          <li key={i} className="flex items-start gap-2.5 text-sm">
+            <CheckCircle2 size={15} className="text-accent shrink-0 mt-0.5" />
+            <span className="text-foreground/85 leading-snug">{line}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+);
+
 // ---------- Detail page ----------
 
 export const ItemDetailPage = ({
   item,
   onBack,
+  variant = 'auction',
 }: {
   item: AuctionItem;
   onBack: () => void;
+  variant?: 'auction' | 'floor-setting';
 }) => {
   const onList = () => {};
   const locationParts = item.location?.split(', ') || [];
@@ -309,8 +632,14 @@ export const ItemDetailPage = ({
 
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
   const [subscribed, setSubscribed] = useState(false);
-  const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const topEntry = FLOOR_HISTORY_BASE.find((e) => e.status === 'active') ?? FLOOR_HISTORY_BASE[0];
+  const topFloorAmount = (item.currentBid ?? 0) + topEntry.offset;
+  const topPlacedAt = useMemo(() => Date.now() - topEntry.minutesAgo * 60 * 1000, [topEntry.minutesAgo]);
+  const nowTick = useNowTick(1000);
+  const topRemaining = topPlacedAt + FLOOR_BID_TTL_MS - nowTick;
+  const isFloorVariant = variant === 'floor-setting';
   const toggleSection = (key: string) =>
     setOpenSections((prev) => {
       const next = new Set(prev);
@@ -370,12 +699,6 @@ export const ItemDetailPage = ({
                 </span>
               </button>
             )}
-            {item.views != null && (
-              <div className="absolute bottom-3 md:bottom-4 right-3 md:right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-white text-xs font-bold">
-                <Eye size={12} />
-                <span>{item.views.toLocaleString()} views</span>
-              </div>
-            )}
           </div>
 
           {galleryImages.length > 1 && (
@@ -404,131 +727,165 @@ export const ItemDetailPage = ({
               {item.title}
             </h1>
 
-            <div className="text-[13px] text-neutral-400 leading-snug">
-              {item.sellerName && (
-                <span className="font-medium text-neutral-300">@{item.sellerName.toLowerCase().replace(/\s+/g, '')}</span>
-              )}
-              {item.views != null && <> · {item.views.toLocaleString()} views</>}
-              {item.endTime && (
+            <div className="text-[13px] text-neutral-400 leading-snug flex flex-wrap items-center gap-x-1.5 gap-y-1 tabular-nums">
+              {item.location && <span>{item.location}</span>}
+              {item.views != null && (
                 <>
-                  {' · '}
-                  <span className="text-red-400 font-medium">Ends in {countdown}</span>
+                  <span className="text-neutral-500">·</span>
+                  <span>{item.views.toLocaleString()} views</span>
                 </>
               )}
-              {' · '}
-              <span>{item.location}</span>
-              <button type="button" className="text-white font-semibold ml-1 hover:underline">
-                ...more
-              </button>
+              {isFloorVariant ? (
+                <>
+                  <span className="text-neutral-500">·</span>
+                  <span className="text-accent font-semibold">Floor Market</span>
+                  <span className="text-neutral-500">·</span>
+                  <span className="text-amber-300 font-medium">
+                    Offer expires in {formatCountdown(topRemaining)}
+                  </span>
+                </>
+              ) : (
+                item.endTime && (
+                  <>
+                    <span className="text-neutral-500">·</span>
+                    <span className="text-red-400 font-medium">Ends in {countdown}</span>
+                  </>
+                )
+              )}
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 pt-1">
               {item.sellerName && (
                 <button
                   type="button"
-                  className="shrink-0 flex items-center gap-2 group"
+                  className="shrink-0 flex items-center gap-3 group min-w-0"
                   aria-label={`${item.sellerName} profile`}
                 >
                   <img
                     src={`https://i.pravatar.cc/100?u=${encodeURIComponent(item.sellerName)}`}
                     alt={item.sellerName}
-                    className="w-9 h-9 rounded-full object-cover"
+                    className="w-11 h-11 rounded-full object-cover shrink-0"
                   />
+                  <div className="flex flex-col items-start leading-tight min-w-0">
+                    <span className="text-[15px] font-semibold text-white group-hover:underline truncate">
+                      {item.sellerName}
+                    </span>
+                    <span className="text-[12px] text-neutral-400 flex items-center gap-1.5 truncate">
+                      <BadgeCheck size={12} className="text-accent shrink-0" />
+                      Verified Seller
+                      <span className="text-neutral-500">·</span>
+                      12 auctions
+                    </span>
+                  </div>
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setSubscribed((s) => !s)}
-                className={cn(
-                  'shrink-0 h-9 px-4 rounded-full text-sm font-semibold transition',
-                  subscribed
-                    ? 'bg-white/[0.1] text-white hover:bg-white/[0.15]'
-                    : 'bg-white text-black hover:bg-white/90',
-                )}
-              >
-                {subscribed ? 'Subscribed' : 'Subscribe'}
-              </button>
 
-              <div className="shrink-0 flex items-center bg-white/[0.1] rounded-full">
-                <button
-                  type="button"
-                  onClick={() => setLiked((l) => !l)}
-                  className="flex items-center gap-1.5 pl-3.5 pr-3 h-9 hover:bg-white/[0.05] rounded-l-full transition"
-                >
-                  <ThumbsUp size={17} className={cn(liked && 'fill-current')} />
-                  <span className="text-sm">{((item.views ?? 0) / 50 | 0) + (liked ? 1 : 0)}</span>
-                </button>
-                <div className="h-5 w-px bg-white/15" />
-                <button
-                  type="button"
-                  className="px-3.5 h-9 hover:bg-white/[0.05] rounded-r-full transition"
-                  aria-label="Dislike"
-                >
-                  <ThumbsDown size={17} />
-                </button>
+              <div className="flex items-center gap-2 md:ml-auto overflow-x-auto md:overflow-visible no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+                {(() => {
+                  const neonBtn =
+                    'shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-black border border-accent/45 text-accent text-sm font-semibold hover:border-accent hover:bg-accent/[0.06] transition shadow-[0_0_14px_rgba(29,208,88,0.22)] hover:shadow-[0_0_22px_rgba(29,208,88,0.4)]';
+                  return (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setSubscribed((s) => !s)}
+                        className={neonBtn}
+                      >
+                        <Plus size={15} strokeWidth={2.75} />
+                        {subscribed ? 'Following' : 'Follow'}
+                      </button>
+
+                      <button type="button" className={neonBtn}>
+                        <Phone size={15} strokeWidth={2.5} />
+                        Contact
+                      </button>
+
+                      <button type="button" className={neonBtn}>
+                        <Forward size={17} strokeWidth={2.25} />
+                        Share
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSaved((s) => !s)}
+                        className={neonBtn}
+                      >
+                        <Plus size={15} strokeWidth={2.75} />
+                        {saved ? 'On Watchlist' : 'To Watchlist'}
+                      </button>
+                    </>
+                  );
+                })()}
               </div>
-
-              <button
-                type="button"
-                className="shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-white/[0.1] hover:bg-white/[0.15] transition text-sm"
-              >
-                <Share2 size={17} />
-                Share
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSaved((s) => !s)}
-                className="shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-white/[0.1] hover:bg-white/[0.15] transition text-sm"
-              >
-                <Bookmark size={17} className={cn(saved && 'fill-current')} />
-                Save
-              </button>
             </div>
 
-            {item.winningBidder && (
-              <div className="flex items-center gap-2 text-[13px] text-neutral-400">
-                <Crown size={14} className="text-accent" />
-                <span>
-                  <span className="font-medium text-neutral-300">@{item.winningBidder}</span>{' '}
-                  {item.status === 'live' ? 'is currently leading' : 'won this auction'}
+            {isFloorVariant ? (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] tabular-nums rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-accent">
+                  Top Floor Bid
                 </span>
-                {item.status === 'live' && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-red-500/15 text-red-400 text-[10px] font-bold uppercase tracking-wider">
-                    <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                    Live
+                <span className="font-bold text-white">{formatCurrency(topFloorAmount)}</span>
+                <span className="text-neutral-500">by</span>
+                <span className="font-medium text-neutral-300">@{topEntry.user}</span>
+                <span className="text-neutral-500">·</span>
+                {topRemaining > 0 ? (
+                  <span className="inline-flex items-center gap-1 text-amber-300 font-medium">
+                    <Timer size={12} />
+                    Expires in {formatCountdown(topRemaining)}
                   </span>
+                ) : (
+                  <span className="text-neutral-500 font-medium">Offer expired</span>
                 )}
               </div>
+            ) : (
+              item.winningBidder && (
+                <div className="flex items-center gap-2 text-[13px] text-neutral-400">
+                  <Crown size={14} className="text-accent" />
+                  <span>
+                    <span className="font-medium text-neutral-300">@{item.winningBidder}</span>{' '}
+                    {item.status === 'live' ? 'is currently leading' : 'won this auction'}
+                  </span>
+                  {item.status === 'live' && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-red-500/15 text-red-400 text-[10px] font-bold uppercase tracking-wider">
+                      <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                      Live
+                    </span>
+                  )}
+                </div>
+              )
             )}
 
             {item.comments && item.comments.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (!openSections.has('comments')) toggleSection('comments');
-                  setTimeout(() => {
-                    document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 50);
-                }}
-                className="w-full text-left rounded-xl bg-secondary/[0.08] hover:bg-secondary/[0.14] px-4 py-3 transition"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold">Comments</span>
-                  <span className="text-[13px] text-neutral-400">{item.comments.length}</span>
+              <div className="rounded-xl bg-secondary/[0.06] px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-semibold">
+                    Comments <span className="text-neutral-400 font-normal">· {item.comments.length}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!openSections.has('comments')) toggleSection('comments');
+                      setTimeout(() => {
+                        document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 50);
+                    }}
+                    className="text-[12px] font-semibold text-neutral-400 hover:text-white hover:underline transition"
+                  >
+                    View all comments
+                  </button>
                 </div>
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2.5 mt-2.5">
                   <img
                     src={`https://i.pravatar.cc/60?u=${encodeURIComponent(item.comments[0].author)}`}
                     alt=""
-                    className="w-6 h-6 rounded-full object-cover shrink-0"
+                    className="w-7 h-7 rounded-full object-cover shrink-0"
                   />
-                  <div className="text-[13px] text-foreground/85 leading-snug line-clamp-2">
-                    <span className="text-neutral-400">@{item.comments[0].author}</span>{' '}
+                  <div className="text-[13px] text-foreground/90 leading-snug line-clamp-2">
+                    <span className="text-neutral-400">@{item.comments[0].author}:</span>{' '}
                     {item.comments[0].body}
                   </div>
                 </div>
-              </button>
+              </div>
             )}
 
             <div className="space-y-3 md:space-y-3 pt-6 md:pt-8 border-t border-white/5">
@@ -860,16 +1217,30 @@ export const ItemDetailPage = ({
 
         <aside className="lg:col-span-5">
           <div className="sticky top-24 space-y-4">
-            {item.status === 'live' && (
+            {variant === 'floor-setting' ? (
               <div className="hidden lg:block">
-                <NativeBiddingPanel item={item} />
+                <FloorSetterPanel item={item} />
               </div>
+            ) : (
+              item.status === 'live' && (
+                <div className="hidden lg:block">
+                  <NativeBiddingPanel item={item} />
+                </div>
+              )
             )}
           </div>
         </aside>
       </div>
 
-      {item.status === 'live' && (() => {
+      {variant === 'floor-setting' && <FloorHowItWorks />}
+
+      {variant === 'floor-setting' && (
+        <div className="lg:hidden mt-6">
+          <FloorSetterPanel item={item} />
+        </div>
+      )}
+
+      {variant !== 'floor-setting' && item.status === 'live' && (() => {
         const cur = item.currentBid || 0;
         const inc = cur < 5000 ? 100 : cur < 25000 ? 500 : cur < 100000 ? 1000 : 2500;
         const nextBid = cur + inc;

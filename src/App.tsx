@@ -1,10 +1,21 @@
-import React, { useState } from 'react';
-import { Gavel, Search, Mic, PlusSquare, Bell, User, LayoutGrid, Home, Clock, History, ThumbsUp, ChevronDown, Award, Heart, MessageSquare, CreditCard, Settings, HelpCircle, MoreVertical, PlaySquare, TrendingUp, Zap, ShieldCheck, Newspaper, Star, AlertTriangle, ExternalLink } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Gavel, Search, Mic, PlusSquare, Bell, User, LayoutGrid, Home, Clock, History, ThumbsUp, ChevronDown, Award, Heart, MessageSquare, CreditCard, Settings, HelpCircle, MoreVertical, PlaySquare, TrendingUp, Zap, ShieldCheck, Newspaper, Star, AlertTriangle, ExternalLink, Hammer } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CATEGORIES, AUCTION_ITEMS, CHANNELS, LIVE_TICKER_DATA, AuctionItem, AuctionChannel } from './constants';
 import { MOCK_ITEMS } from './mockData';
 import { ItemDetailPage } from './ItemDetail';
 import { AuctioneerProfile } from './AuctioneerProfile';
+import { ListingJourney } from './floor/ListingJourney';
+import { SellerDashboard } from './floor/SellerDashboard';
+import { FloorMarketItem } from './floor/FloorMarketItem';
+
+type FloorRoute = 'listing' | 'dashboard' | 'floor-item' | null;
+
+const getFloorRoute = (): FloorRoute => {
+  const h = window.location.hash.replace('#', '');
+  if (h === 'listing' || h === 'dashboard' || h === 'floor-item') return h;
+  return null;
+};
 
 type DealTier = {
   label: string;
@@ -316,7 +327,7 @@ const SidebarChannel: React.FC<{ name: string; avatar: string; onClick?: () => v
   </button>
 );
 
-type View = 'for-you' | 'ending-soon' | 'native-listings' | 'best-deals';
+type View = 'for-you' | 'ending-soon' | 'native-listings' | 'best-deals' | 'floor-market';
 
 const Sidebar = ({
   activeView,
@@ -337,6 +348,14 @@ const Sidebar = ({
       onClick={() => onSelect('native-listings')}
     />
     <SidebarItem icon={Zap} label="Best Deals" active={activeView === 'best-deals'} onClick={() => onSelect('best-deals')} />
+    <SidebarItem icon={TrendingUp} label="Floor Market" active={activeView === 'floor-market'} onClick={() => onSelect('floor-market')} />
+
+    <div className="my-3 border-t border-white/10" />
+
+    <div className="px-3 pb-1 pt-2 text-base font-semibold text-white">Sell on Unreserved</div>
+    <SidebarItem icon={Hammer} label="List Vehicle" onClick={() => { window.location.hash = 'listing'; }} />
+    <SidebarItem icon={LayoutGrid} label="Seller Dashboard" onClick={() => { window.location.hash = 'dashboard'; }} />
+    <SidebarItem icon={ShieldCheck} label="Floor Market Item" onClick={() => { window.location.hash = 'floor-item'; }} />
 
     <div className="my-3 border-t border-white/10" />
 
@@ -402,6 +421,11 @@ const BANNER_COPY: Record<View, { title: React.ReactNode; subtitle: string; cta:
     subtitle: 'Ranked by deal score — biggest gaps between current bid and fair market value.',
     cta: 'Sign Up Now',
   },
+  'floor-market': {
+    title: <>The <span className="text-green-500">Floor Market</span></>,
+    subtitle: 'Live floor pricing across the network — see where bids are clearing right now.',
+    cta: 'Sign Up Now',
+  },
 };
 
 const HeroBanner = ({ view }: { view: View }) => {
@@ -436,8 +460,9 @@ const HeroBanner = ({ view }: { view: View }) => {
   );
 };
 
-const AuctionCard: React.FC<{ item: AuctionItem; onClick?: () => void; onChannelClick?: (id: string) => void }> = ({ item, onClick, onChannelClick }) => {
+const AuctionCard: React.FC<{ item: AuctionItem; onClick?: () => void; onChannelClick?: (id: string) => void; variant?: 'default' | 'floor-market' }> = ({ item, onClick, onChannelClick, variant = 'default' }) => {
   const channel = CHANNELS.find(c => c.id === item.channelId);
+  const isFloorMarket = variant === 'floor-market';
 
   return (
     <div onClick={onClick} className="flex flex-col gap-3 group cursor-pointer">
@@ -448,6 +473,11 @@ const AuctionCard: React.FC<{ item: AuctionItem; onClick?: () => void; onChannel
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
+        {isFloorMarket && (
+          <span className="absolute top-2 left-2 bg-green-500 text-black text-[11px] font-bold tracking-wide px-2 py-1 rounded">
+            CURRENT FLOOR: ${item.currentBid.toLocaleString()}
+          </span>
+        )}
         <span className="absolute bottom-2 right-2 bg-black/85 text-white text-xs font-medium px-1.5 py-0.5 rounded">
           {item.endTime}
         </span>
@@ -479,7 +509,10 @@ const AuctionCard: React.FC<{ item: AuctionItem; onClick?: () => void; onChannel
                 <path d="M12 2 9.4 4.6 6 4l-.6 3.4L2 9l1.6 3L2 15l3.4 1.6L6 20l3.4-.6L12 22l2.6-2.6L18 20l.6-3.4L22 15l-1.6-3L22 9l-3.4-1.6L18 4l-3.4.6Zm-1 14-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9Z" />
               </svg>
             )}
-            <span> · ${item.currentBid.toLocaleString()} · {item.location}</span>
+            <span>
+              {!isFloorMarket && <> · ${item.currentBid.toLocaleString()}</>}
+              {' · '}{item.location}
+            </span>
           </div>
         </div>
 
@@ -501,6 +534,28 @@ export default function App() {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('for-you');
   const [submitOpen, setSubmitOpen] = useState(false);
+  const [floorRoute, setFloorRoute] = useState<FloorRoute>(getFloorRoute());
+
+  useEffect(() => {
+    const onHash = () => setFloorRoute(getFloorRoute());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const navigateFloor = (page: string) => {
+    if (page === 'home') {
+      window.location.hash = '';
+      setFloorRoute(null);
+      return;
+    }
+    window.location.hash = page;
+    setFloorRoute(page as FloorRoute);
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  };
+
+  if (floorRoute === 'listing') return <ListingJourney onNavigate={navigateFloor} />;
+  if (floorRoute === 'dashboard') return <SellerDashboard onNavigate={navigateFloor} />;
+  if (floorRoute === 'floor-item') return <FloorMarketItem onNavigate={navigateFloor} />;
 
   const handleSelectItem = (id: string) => {
     setSelectedItemId(id);
@@ -542,17 +597,17 @@ export default function App() {
           {selectedChannel ? (
             <AuctioneerProfile channel={selectedChannel} onBack={() => setSelectedChannelId(null)} />
           ) : detailItem ? (
-            <ItemDetailPage item={detailItem} onBack={() => setSelectedItemId(null)} />
+            <ItemDetailPage item={detailItem} onBack={() => setSelectedItemId(null)} variant={activeView === 'floor-market' ? 'floor-setting' : 'auction'} />
           ) : (
             <>
               <CategoryPills />
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6 md:gap-y-8 px-0 md:px-6 pt-1 pb-12 md:pt-3 md:pb-20">
                 {AUCTION_ITEMS.map((item) => (
-                  <AuctionCard key={item.id} item={item} onClick={() => handleSelectItem(item.id)} onChannelClick={handleSelectChannel} />
+                  <AuctionCard key={item.id} item={item} variant={activeView === 'floor-market' ? 'floor-market' : 'default'} onClick={() => handleSelectItem(item.id)} onChannelClick={handleSelectChannel} />
                 ))}
                 {AUCTION_ITEMS.map((item) => (
-                  <AuctionCard key={`${item.id}-dup`} item={item} onClick={() => handleSelectItem(item.id)} onChannelClick={handleSelectChannel} />
+                  <AuctionCard key={`${item.id}-dup`} item={item} variant={activeView === 'floor-market' ? 'floor-market' : 'default'} onClick={() => handleSelectItem(item.id)} onChannelClick={handleSelectChannel} />
                 ))}
               </div>
             </>
